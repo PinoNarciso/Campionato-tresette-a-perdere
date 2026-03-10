@@ -99,13 +99,15 @@
     let isAdmin = false;
     let gameData = { players: [], limit: 81 };
 
-    // INIZIALIZZAZIONE CON ATTESA LIBRERIE
+    // INIZIALIZZAZIONE SPECIFICA PER REGIONE EUROPEA
     function checkAndInit() {
         if (typeof firebase !== 'undefined') {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-            // Inizializzazione specifica per database europei
-            db = firebase.database();
-            console.log("✅ CLOUD PRONTO");
+            
+            // FONDAMENTALE: Passare l'URL esplicito per sbloccare la connessione in Europa
+            db = firebase.database(firebase.app(), firebaseConfig.databaseURL);
+            
+            console.log("✅ CLOUD COLLEGATO: Database Europeo Pronta");
             return true;
         }
         return false;
@@ -117,7 +119,7 @@
     window.showJoin = () => { document.getElementById('join-area').classList.toggle('hidden'); document.getElementById('create-area').classList.add('hidden'); };
 
     window.createNewTable = function() {
-        if (!db) return alert("Connessione in corso... Riprova tra un istante.");
+        if (!db) return alert("Connessione in corso... Riprova tra 2 secondi.");
         const names = document.getElementById('names').value.split(',').map(n => n.trim()).filter(n => n);
         if (names.length < 2) return alert('Inserisci almeno 2 nomi');
         isAdmin = true;
@@ -127,7 +129,7 @@
             limit: parseInt(document.getElementById('limit').value) || 81,
             players: names.map((n, i) => ({ id: i, name: n, score: 0, active: true, playerHistory: [] }))
         };
-        db.ref('tables/' + currentTableID).set(gameData).then(startListening).catch(e => alert("Errore database! Verifica le Rules su Firebase."));
+        db.ref('tables/' + currentTableID).set(gameData).then(startListening).catch(e => alert("Errore database! Controlla le regole su Firebase."));
     };
 
     window.joinTable = function() {
@@ -135,6 +137,7 @@
         currentTableID = document.getElementById('joinCode').value.toUpperCase().trim();
         if(!currentTableID) return alert("Codice richiesto!");
         isAdmin = false;
+        document.body.classList.add('is-viewer');
         startListening();
     };
 
@@ -174,8 +177,8 @@
                 inputDiv.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                     <span style="font-weight:bold">${p.name}</span>
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" class="score-in" data-id="${p.id}" style="width:55px; margin:0;" oninput="checkSum()" onclick="this.select()">
-                        <button style="background:var(--info); border:none; color:white; padding:4px 8px; border-radius:4px" onclick="fillRete(${p.id})">RETE</button>
+                        <input type="number" inputmode="numeric" class="score-in" data-id="${p.id}" style="width:55px; margin:0;" oninput="checkSum()" onclick="this.select()">
+                        <button style="background:#34b7f1; border:none; color:white; padding:4px 8px; border-radius:4px" onclick="fillRete(${p.id})">RETE</button>
                     </div></div>`;
             });
             checkSum();
@@ -186,8 +189,11 @@
         let sum = 0;
         document.querySelectorAll('.score-in').forEach(i => sum += parseInt(i.value || 0));
         document.getElementById('confirm-btn').disabled = (sum !== 21);
-        document.getElementById('sum-display').innerText = `Somma: ${sum} / 21`;
-        document.getElementById('sum-display').className = `sum-check ${sum===21?'sum-ok':'sum-err'}`;
+        const display = document.getElementById('sum-display');
+        if(display) {
+            display.innerText = `Somma: ${sum} / 21`;
+            display.className = `sum-check ${sum===21?'sum-ok':'sum-err'}`;
+        }
     };
 
     window.fillRete = (id) => {
@@ -202,9 +208,8 @@
             const inp = document.querySelector(`.score-in[data-id="${p.id}"]`);
             if (inp) {
                 const val = parseInt(inp.value || 0);
-                p.score += val;
                 if(!p.playerHistory) p.playerHistory = [];
-                p.playerHistory.push(val);
+                p.score += val; p.playerHistory.push(val);
                 if (p.score >= gameData.limit) p.active = false;
             }
         });
@@ -225,3 +230,4 @@
 </script>
 </body>
 </html>
+
