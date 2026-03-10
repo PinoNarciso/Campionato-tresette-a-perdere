@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tressette Cloud - Pino Narciso</title>
+    
+    <!-- Librerie Firebase Compatibili -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+
     <style>
         :root { --primary: #2c3e50; --danger: #e74c3c; --warning: #f39c12; --success: #27ae60; --accent: #3498db; --info: #34b7f1; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
@@ -31,10 +36,6 @@
 </head>
 <body>
 
-    <!-- LIBRERIE FIREBASE CORRETTE (Puntano ai file reali) -->
-    <script src="https://cdnjs.cloudflare.com"></script>
-    <script src="https://cdnjs.cloudflare.com"></script>
-
     <div class="card" id="setup">
         <h1>Tressette Cloud</h1>
         <div style="display: flex; gap: 10px;">
@@ -47,8 +48,8 @@
             <input type="text" id="tableName" value="Tavolo 1">
             <label>Limite Punti</label>
             <input type="number" id="limit" value="81">
-            <label>Giocatori (es: Mario, Luca, Anna)</label>
-            <input id="names" placeholder="Nomi separati da virgola">
+            <label>Giocatori (separati da virgola)</label>
+            <input id="names" placeholder="es: Mario, Luca, Anna">
             <button class="btn-main" onclick="createNewTable()">Avvia come Capotavola</button>
         </div>
 
@@ -75,7 +76,7 @@
         </table>
 
         <div class="admin-only" style="margin-top: 15px;">
-            <button style="background:#95a5a6; color:white; width:100%; border:none; padding:10px; border-radius:8px;" onclick="undoLast()">↩️ Annulla Ultima</button>
+            <button style="background:#95a5a6; color:white; padding:10px; border-radius:8px; border:none; width:100%" onclick="undoLast()">↩️ Annulla Ultima Mano</button>
         </div>
         <button style="background: #eee; color: #333; font-size: 0.8rem; margin-top:10px" onclick="location.reload()">🔄 Torna al Menu</button>
     </div>
@@ -83,6 +84,7 @@
     <footer>Sviluppato da <strong>Pino Narciso</strong></footer>
 
 <script>
+    // CONFIGURAZIONE FIREBASE (Con URL esplicito per europe-west1)
     const firebaseConfig = {
         apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
         authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
@@ -93,30 +95,34 @@
         appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
     };
 
-    let db = null;
+    let db;
     let currentTableID = null;
     let isAdmin = false;
     let gameData = { players: [], limit: 81 };
 
-    function checkAndInit() {
+    // INIZIALIZZAZIONE
+    function init() {
         if (typeof firebase !== 'undefined') {
-            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            firebase.initializeApp(firebaseConfig);
+            // Forza l'uso dell'URL del database specifico per la regione
             db = firebase.database();
-            console.log("✅ CLOUD PRONTO");
+            console.log("✅ Connessione Cloud Pronta");
             return true;
         }
         return false;
     }
 
-    let retry = setInterval(() => { if (checkAndInit()) clearInterval(retry); }, 500);
+    const checkInit = setInterval(() => { if(init()) clearInterval(checkInit); }, 500);
 
     window.showCreate = () => { document.getElementById('create-area').classList.toggle('hidden'); document.getElementById('join-area').classList.add('hidden'); };
     window.showJoin = () => { document.getElementById('join-area').classList.toggle('hidden'); document.getElementById('create-area').classList.add('hidden'); };
 
     window.createNewTable = function() {
-        if (!db) return alert("Attendi connessione...");
-        const names = document.getElementById('names').value.split(',').map(n => n.trim()).filter(n => n);
-        if (names.length < 2) return alert('Minimo 2 giocatori');
+        if (!db) return alert("Connessione in corso...");
+        const namesIn = document.getElementById('names').value;
+        const names = namesIn.split(',').map(n => n.trim()).filter(n => n);
+        if (names.length < 2) return alert('Minimo 2 nomi');
+        
         isAdmin = true;
         currentTableID = "TAV-" + Math.floor(1000 + Math.random() * 9000);
         gameData = {
@@ -124,11 +130,14 @@
             limit: parseInt(document.getElementById('limit').value) || 81,
             players: names.map((n, i) => ({ id: i, name: n, score: 0, active: true, playerHistory: [] }))
         };
-        db.ref('tables/' + currentTableID).set(gameData).then(startListening);
+
+        db.ref('tables/' + currentTableID).set(gameData).then(startListening).catch(e => alert("Errore database! Controlla le regole su Firebase."));
     };
 
     window.joinTable = function() {
+        if (!db) return;
         currentTableID = document.getElementById('joinCode').value.toUpperCase().trim();
+        if(!currentTableID) return alert("Inserisci codice!");
         isAdmin = false;
         document.body.classList.add('is-viewer');
         startListening();
@@ -137,7 +146,7 @@
     function startListening() {
         db.ref('tables/' + currentTableID).on('value', (snapshot) => {
             const data = snapshot.val();
-            if (!data) return;
+            if (!data) return alert("Tavolo non trovato!");
             gameData = data;
             document.getElementById('setup').classList.add('hidden');
             document.getElementById('game').classList.remove('hidden');
@@ -158,15 +167,15 @@
             rank.innerHTML += `<tr class="${!p.active ? 'eliminated' : ''}"><td>${i+1}</td><td>${p.name}</td><td style="color:${color}; font-weight:bold">${p.score}</td><td><div class="history-scroll-cell">${badges}</div></td></tr>`;
         });
 
-        const inputDiv = document.getElementById('inputs-area');
         if (isAdmin) {
+            const inputDiv = document.getElementById('inputs-area');
             inputDiv.innerHTML = '';
             gameData.players.filter(p => p.active).forEach(p => {
-                inputDiv.innerHTML += `<div class="player-row" style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span>${p.name}</span>
+                inputDiv.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span style="font-weight:bold">${p.name}</span>
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <input type="number" class="score-in" data-id="${p.id}" style="width:50px; margin:0;" oninput="checkSum()" onclick="this.select()">
-                        <button class="btn-rete" onclick="fillRete(${p.id})">RETE</button>
+                        <input type="number" class="score-in" data-id="${p.id}" style="width:55px; margin:0;" oninput="checkSum()" onclick="this.select()">
+                        <button style="background:#34b7f1; border:none; color:white; padding:4px 8px; border-radius:4px" onclick="fillRete(${p.id})">RETE</button>
                     </div></div>`;
             });
             checkSum();
@@ -176,13 +185,9 @@
     window.checkSum = () => {
         let sum = 0;
         document.querySelectorAll('.score-in').forEach(i => sum += parseInt(i.value || 0));
-        const btn = document.getElementById('confirm-btn');
-        const display = document.getElementById('sum-display');
-        if(display) {
-            display.innerText = `Somma: ${sum} / 21`;
-            display.className = `sum-check ${sum === 21 ? 'sum-ok' : 'sum-err'}`;
-        }
-        if(btn) btn.disabled = (sum !== 21);
+        document.getElementById('confirm-btn').disabled = (sum !== 21);
+        document.getElementById('sum-display').innerText = `Somma: ${sum} / 21`;
+        document.getElementById('sum-display').className = `sum-check ${sum===21?'sum-ok':'sum-err'}`;
     };
 
     window.fillRete = (id) => {
@@ -198,8 +203,7 @@
             if (inp) {
                 const val = parseInt(inp.value || 0);
                 if(!p.playerHistory) p.playerHistory = [];
-                p.score += val;
-                p.playerHistory.push(val);
+                p.score += val; p.playerHistory.push(val);
                 if (p.score >= gameData.limit) p.active = false;
             }
         });
@@ -210,8 +214,7 @@
         if(!confirm("Annullare l'ultima mano?")) return;
         gameData.players.forEach(p => {
             if (p.playerHistory && p.playerHistory.length) {
-                const val = p.playerHistory.pop();
-                p.score -= val;
+                p.score -= p.playerHistory.pop();
                 p.active = p.score < gameData.limit;
             }
         });
