@@ -31,7 +31,7 @@
 </head>
 <body>
 
-    <!-- LIBRERIE FIREBASE CORRETTE -->
+    <!-- LIBRERIE FIREBASE CORRETTE (Puntano ai file reali) -->
     <script src="https://cdnjs.cloudflare.com"></script>
     <script src="https://cdnjs.cloudflare.com"></script>
 
@@ -75,7 +75,7 @@
         </table>
 
         <div class="admin-only" style="margin-top: 15px;">
-            <button style="background:#95a5a6" onclick="undoLast()">↩️ Annulla Ultima</button>
+            <button style="background:#95a5a6; color:white; width:100%; border:none; padding:10px; border-radius:8px;" onclick="undoLast()">↩️ Annulla Ultima</button>
         </div>
         <button style="background: #eee; color: #333; font-size: 0.8rem; margin-top:10px" onclick="location.reload()">🔄 Torna al Menu</button>
     </div>
@@ -162,27 +162,34 @@
         if (isAdmin) {
             inputDiv.innerHTML = '';
             gameData.players.filter(p => p.active).forEach(p => {
-                inputDiv.innerHTML += `<div class="player-row" style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                inputDiv.innerHTML += `<div class="player-row" style="display:flex; justify-content:space-between; margin-bottom:8px;">
                     <span>${p.name}</span>
-                    <div><input type="number" class="score-in" data-id="${p.id}" style="width:50px;" oninput="checkSum()">
-                    <button class="btn-rete" onclick="fillRete(${p.id})">RETE</button></div></div>`;
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <input type="number" class="score-in" data-id="${p.id}" style="width:50px; margin:0;" oninput="checkSum()" onclick="this.select()">
+                        <button class="btn-rete" onclick="fillRete(${p.id})">RETE</button>
+                    </div></div>`;
             });
+            checkSum();
         }
     }
 
     window.checkSum = () => {
         let sum = 0;
         document.querySelectorAll('.score-in').forEach(i => sum += parseInt(i.value || 0));
-        document.getElementById('confirm-btn').disabled = (sum !== 21);
-        document.getElementById('sum-display').innerText = `Somma: ${sum} / 21`;
-        document.getElementById('sum-display').className = `sum-check ${sum===21?'sum-ok':'sum-err'}`;
+        const btn = document.getElementById('confirm-btn');
+        const display = document.getElementById('sum-display');
+        if(display) {
+            display.innerText = `Somma: ${sum} / 21`;
+            display.className = `sum-check ${sum === 21 ? 'sum-ok' : 'sum-err'}`;
+        }
+        if(btn) btn.disabled = (sum !== 21);
     };
 
     window.fillRete = (id) => {
         let currentTotal = 0;
         document.querySelectorAll('.score-in').forEach(inp => { if (parseInt(inp.dataset.id) !== id) currentTotal += parseInt(inp.value || 0); });
-        document.querySelector(`.score-in[data-id="${id}"]`).value = Math.max(0, 21 - currentTotal);
-        checkSum();
+        const target = document.querySelector(`.score-in[data-id="${id}"]`);
+        if(target) { target.value = Math.max(0, 21 - currentTotal); checkSum(); }
     };
 
     window.addRound = () => {
@@ -190,8 +197,8 @@
             const inp = document.querySelector(`.score-in[data-id="${p.id}"]`);
             if (inp) {
                 const val = parseInt(inp.value || 0);
-                p.score += val;
                 if(!p.playerHistory) p.playerHistory = [];
+                p.score += val;
                 p.playerHistory.push(val);
                 if (p.score >= gameData.limit) p.active = false;
             }
@@ -200,9 +207,11 @@
     };
 
     window.undoLast = () => {
+        if(!confirm("Annullare l'ultima mano?")) return;
         gameData.players.forEach(p => {
             if (p.playerHistory && p.playerHistory.length) {
-                p.score -= p.playerHistory.pop();
+                const val = p.playerHistory.pop();
+                p.score -= val;
                 p.active = p.score < gameData.limit;
             }
         });
