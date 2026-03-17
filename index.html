@@ -17,23 +17,23 @@
 
 <script>
 db.ref("tables").on("value", snap => {
-  const tables = snap.val() || {}
-  const div = document.getElementById("tables")
-  div.innerHTML = ""
+  const tables = snap.val() || {};
+  const div = document.getElementById("tables");
+  div.innerHTML = "";
   for(let id in tables){
-    const t = tables[id]
+    const t = tables[id];
     div.innerHTML += `
       <div class="table">
         <b>${t.name}</b> - Giocatori: ${t.players}<br>
         <button onclick="enterTable('${id}')">Entra nel tavolo</button>
       </div>
-    `
+    `;
   }
-})
+});
 
 function enterTable(id){
-  localStorage.setItem("tableID", id)
-  location.href = "tresetteaPerdere.html"
+  localStorage.setItem("tableID", id);
+  location.href = "tresetteaPerdere.html";
 }
 </script>
 
