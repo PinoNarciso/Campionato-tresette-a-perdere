@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+
+<meta charset="UTF-8">
+<title>Tavoli Tressette</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="firebase.js"></script>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Tavoli disponibili</h2>
+
+<div id="tables"></div>
+
+</div>
+
+<script>
+
+db.ref("tables").on("value",snap=>{
+
+const tables=snap.val()||{}
+
+const div=document.getElementById("tables")
+
+div.innerHTML=""
+
+for(let id in tables){
+
+const t=tables[id]
+
+div.innerHTML+=`
+<div class="table">
+<b>${t.name}</b><br>
+Giocatori: ${t.players}<br>
+<button onclick="enterTable('${id}')">Entra nel tavolo</button>
+</div>
+`
+
+}
+
+})
+
+function enterTable(id){
+
+localStorage.setItem("tableID",id)
+
+location.href="gioco.html"
+
+}
+
+</script>
+
+</body>
+</html>

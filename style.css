@@ -1,0 +1,44 @@
+
+body{
+font-family:Segoe UI, Arial;
+background:#f0f2f5;
+display:flex;
+justify-content:center;
+padding:30px;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:10px;
+width:420px;
+box-shadow:0 4px 10px rgba(0,0,0,0.1);
+margin-bottom:20px;
+}
+
+input{
+width:100%;
+padding:8px;
+margin-top:6px;
+}
+
+button{
+width:100%;
+padding:10px;
+border:none;
+border-radius:6px;
+background:#27ae60;
+color:white;
+cursor:pointer;
+margin-top:6px;
+}
+
+.table{
+border-bottom:1px solid #eee;
+padding:10px 0;
+}
+
+.viewer{
+background:#ddd;
+color:#333;
+}
