@@ -241,14 +241,53 @@ Conferma Mano
 <footer>© 2026 - Pino Narciso</footer>
 
 <script>
+<div class="card" id="setup">
+<h1>Nuovo Tavolo</h1>
 
-let players=[]
-let history=[]
-let limit=81
-let tableName="Tavolo 1"
-let winners=1
-let dealerIndex=-1
+<label>Nome Tavolo</label>
+<input id="tableName" value="">
+<label>Punti limite</label>
+<input type="number" id="limit" value="">
+<label>Numero vincitori</label>
+<input type="number" id="winners" value="">
+<label>Giocatori (separati da virgola)</label>
+<input id="names" value="">
+<button class="btn-main" onclick="start()">Inizia partita</button>
+</div>
 
+<script>
+let tableID = localStorage.getItem("tableID")
+let tableData
+let role = "viewer"
+
+db.ref("tables/"+tableID).on("value", snap => {
+  tableData = snap.val()
+  if(!tableData) return
+
+  document.getElementById("tableName").value = tableData.name
+  document.getElementById("limit").value = tableData.limit
+  document.getElementById("winners").value = tableData.winners
+  document.getElementById("names").value = tableData.players
+
+  if(!tableData.editor) requestPassword()
+})
+
+function requestPassword(){
+  const pass = prompt("Inserisci password tavolo")
+  if(pass===tableData.password){
+    db.ref("tables/"+tableID+"/editor").set(true)
+    role = "editor"
+    alert("Ora puoi inserire i punteggi")
+  }else{
+    role = "viewer"
+    alert("Accesso solo visualizzazione")
+  }
+}
+
+function start(){
+  if(role!=="editor") alert("Sei in modalità spettatore")
+  // qui puoi richiamare il tuo codice di Tressette per iniziare la partita
+}
 function saveGame(){
 localStorage.setItem("tressetteGame",
 JSON.stringify({players,history,limit,tableName,winners,dealerIndex}))
