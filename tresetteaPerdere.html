@@ -3,621 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tressette a Perdere - Pino Narciso</title>
-
-<style>
-:root{
---primary:#2c3e50;
---danger:#e74c3c;
---warning:#f39c12;
---success:#27ae60;
---accent:#3498db;
---info:#34b7f1;
-}
-
-body{
-font-family:Segoe UI;
-background:#f0f2f5;
-margin:0;
-padding:10px;
-display:flex;
-flex-direction:column;
-align-items:center;
-}
-
-.card{
-background:white;
-padding:15px;
-border-radius:12px;
-box-shadow:0 4px 10px rgba(0,0,0,0.1);
-width:100%;
-max-width:520px;
-margin-bottom:15px;
-}
-
-h1{
-text-align:center;
-font-size:1.3rem;
-color:var(--primary);
-}
-
-label{
-font-weight:bold;
-font-size:0.8rem;
-}
-
-input{
-width:100%;
-padding:8px;
-margin-bottom:10px;
-border-radius:6px;
-border:1px solid #ddd;
-}
-
-button{
-width:100%;
-padding:10px;
-border:none;
-border-radius:8px;
-color:white;
-font-weight:bold;
-margin-bottom:6px;
-cursor:pointer;
-}
-
-.btn-main{background:var(--success);}
-.btn-cap{background:var(--warning);width:auto;padding:4px 8px;font-size:0.7rem;}
-.btn-rete{background:var(--info);width:auto;padding:4px 8px;font-size:0.7rem;}
-.btn-undo{background:#95a5a6;}
-.btn-share{background:var(--accent);}
-
-#confirm-btn{background:var(--danger);}
-#confirm-btn.ready{background:var(--success);}
-
-.player-row{
-display:flex;
-justify-content:space-between;
-align-items:center;
-padding:6px 0;
-border-bottom:1px solid #eee;
-}
-
-.sum-check{
-text-align:center;
-font-weight:bold;
-padding:6px;
-border-radius:6px;
-margin:10px 0;
-}
-
-.sum-ok{background:#e8f5e9;color:green;}
-.sum-err{background:#ffebee;color:red;}
-
-table{
-width:100%;
-border-collapse:collapse;
-table-layout:fixed;
-}
-
-th,td{
-padding:6px;
-font-size:0.8rem;
-text-align:center;
-border-bottom:1px solid #eee;
-}
-
-th:nth-child(2),td:nth-child(2){
-text-align:left;
-width:90px;
-}
-
-.history-scroll-cell{
-display:flex;
-gap:8px;
-overflow-x:auto;
-padding:4px 0;
-}
-
-.badge-container{
-display:flex;
-flex-direction:column;
-align-items:center;
-min-width:24px;
-}
-
-.hand-num{
-display:flex;
-align-items:center;
-justify-content:center;
-width:20px;
-height:20px;
-border-radius:50%;
-background:#ddd;
-font-size:0.7rem;
-font-weight:bold;
-margin-bottom:2px;
-}
-
-.badge{
-padding:4px 6px;
-border-radius:6px;
-font-size:0.75rem;
-}
-
-.leader{background:#e8f8f5;}
-
-.temp-winner{
-background:#e8f9ee;
-border-left:4px solid #27ae60;
-}
-
-.warning{background:#fff3cd;}
-
-.eliminated{
-background:#fdf2f2;
-color:#aaa;
-text-decoration:line-through;
-}
-
-.hidden{display:none}
-
-footer{
-font-size:0.7rem;
-text-align:center;
-color:#777;
-margin:20px 0;
-}
-</style>
+<title>Tressette a Perdere - Firebase</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="firebase.js"></script>
 </head>
-
 <body>
 
 <div class="card" id="setup">
-
 <h1>Nuovo Tavolo</h1>
-
 <label>Nome Tavolo</label>
-<input id="tableName" value="Tavolo 1">
-
+<input id="tableName" value="">
 <label>Punti limite</label>
 <input type="number" id="limit" value="81">
-
 <label>Numero vincitori</label>
-<input type="number" id="winners" value="3" min="1">
-
+<input type="number" id="winners" value="3">
 <label>Giocatori (separati da virgola)</label>
-<input id="names" placeholder="Mario, Luca, Anna">
-
+<input id="names" value="">
 <button class="btn-main" onclick="start()">Inizia partita</button>
-
 </div>
 
 <div class="card hidden" id="game">
-
 <h1 id="displayTableName"></h1>
-
 <div id="inputs-area"></div>
-
-<div id="sum-display" class="sum-check sum-err">
-Somma: 0 / 21
-</div>
-
-<button id="confirm-btn" onclick="addRound()" disabled>
-Conferma Mano
-</button>
-
+<div id="sum-display" class="sum-check sum-err">Somma: 0 / 21</div>
+<button id="confirm-btn" onclick="addRound()" disabled>Conferma Mano</button>
 <h3>Classifica e storico</h3>
-
 <table>
-<thead>
-<tr>
-<th>N</th>
-<th>Nome</th>
-<th>Punti</th>
-<th>Storico</th>
-</tr>
-</thead>
-
+<thead><tr><th>N</th><th>Nome</th><th>Punti</th><th>Storico</th></tr></thead>
 <tbody id="ranking-body"></tbody>
 </table>
-
 <div style="margin-top:15px">
-
-<button class="btn-share" onclick="shareResults()">
-📤 Condividi risultati
-</button>
-
-<button class="btn-undo" onclick="undoLast()">
-↩️ Annulla ultima mano
-</button>
-
-<button style="background:#eee;color:#333" onclick="resetGame()">
-🔄 Nuova partita
-</button>
-
+<button class="btn-share" onclick="shareResults()">📤 Condividi risultati</button>
+<button class="btn-undo" onclick="undoLast()">↩️ Annulla ultima mano</button>
+<button style="background:#eee;color:#333" onclick="resetGame()">🔄 Nuova partita</button>
 </div>
 </div>
 
 <footer>© 2026 - Pino Narciso</footer>
 
 <script>
+let tableID = localStorage.getItem("tableID");
+let tableData;
+let role = "viewer";
 
-let players=[]
-let history=[]
-let limit=81
-let tableName="Tavolo 1"
-let winners=1
-let dealerIndex=-1
+let players=[], history=[], limit=81, tableName="Tavolo 1", winners=1, dealerIndex=-1;
 
-function saveGame(){
-localStorage.setItem("tressetteGame",
-JSON.stringify({players,history,limit,tableName,winners,dealerIndex}))
-}
+// Carica dati tavolo Firebase
+db.ref("tables/"+tableID).on("value", snapshot => {
+  tableData = snapshot.val();
+  if(!tableData) return;
+  document.getElementById("tableName").value = tableData.name;
+  document.getElementById("limit").value = tableData.limit;
+  document.getElementById("winners").value = tableData.winners;
+  document.getElementById("names").value = tableData.players;
+  if(!tableData.editor) requestPassword();
+});
 
-window.onload=function(){
-
-const savedNames=localStorage.getItem("tressetteNames")
-if(savedNames) document.getElementById("names").value=savedNames
-
-const saved=localStorage.getItem("tressetteGame")
-
-if(saved){
-
-const data=JSON.parse(saved)
-
-players=data.players
-history=data.history
-limit=data.limit
-tableName=data.tableName
-winners=data.winners||1
-dealerIndex=data.dealerIndex ?? -1
-
-document.getElementById("displayTableName").innerText=tableName
-
-document.getElementById("setup").classList.add("hidden")
-document.getElementById("game").classList.remove("hidden")
-
-render()
-
-}
-
+function requestPassword(){
+  const pass = prompt("Inserisci password tavolo");
+  if(pass === tableData.password){
+    db.ref("tables/"+tableID+"/editor").set(true);
+    role = "editor";
+    alert("Ora puoi inserire i punteggi!");
+  } else {
+    role = "viewer";
+    alert("Accesso solo visualizzazione");
+  }
 }
 
 function start(){
+  if(role !== "editor") alert("Sei in modalità spettatore");
 
-const namesRaw=document.getElementById("names").value
+  const namesRaw = document.getElementById("names").value;
+  const names = namesRaw.split(",").map(n => n.trim()).filter(n => n);
+  if(names.length < 2){ alert("Inserisci almeno 2 giocatori"); return; }
 
-localStorage.setItem("tressetteNames",namesRaw)
+  limit = parseInt(document.getElementById("limit").value) || 81;
+  winners = parseInt(document.getElementById("winners").value) || 1;
+  tableName = document.getElementById("tableName").value;
 
-const names=namesRaw.split(",").map(n=>n.trim()).filter(n=>n)
+  players = names.map((n,i) => ({id:i,name:n,score:0,active:true,playerHistory:[]}));
+  dealerIndex=-1;
+  document.getElementById("displayTableName").innerText = tableName;
 
-if(names.length<2){
-alert("Inserisci almeno 2 giocatori")
-return
+  document.getElementById("setup").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+
+  saveGame();
+  render();
 }
 
-limit=parseInt(document.getElementById("limit").value)||81
-winners=parseInt(document.getElementById("winners").value)||1
-tableName=document.getElementById("tableName").value
-
-players=names.map((n,i)=>({
-id:i,
-name:n,
-score:0,
-active:true,
-playerHistory:[]
-}))
-
-dealerIndex=-1
-
-document.getElementById("displayTableName").innerText=tableName
-
-document.getElementById("setup").classList.add("hidden")
-document.getElementById("game").classList.remove("hidden")
-
-saveGame()
-render()
-
-}
-
-function render(){
-
-const area=document.getElementById("inputs-area")
-area.innerHTML=""
-
-players.filter(p=>p.active).forEach(p=>{
-
-const isDealer=(dealerIndex!=-1 && players[dealerIndex].id==p.id)?"leader":""
-
-area.innerHTML+=`
-<div class="player-row ${isDealer}">
-<span>${p.name} ${isDealer?"🃏":""}</span>
-
-<div style="display:flex;gap:4px">
-
-<input type="number"
-class="score-in"
-data-id="${p.id}"
-min="0"
-max="21"
-style="width:50px"
-oninput="checkSum()">
-
-<button class="btn-rete" onclick="fillRete(${p.id})">RETE</button>
-
-<button class="btn-cap" onclick="makeCappotto(${p.id})">CAP</button>
-
-</div>
-</div>
-`
-
-})
-
-renderRanking()
-checkSum()
-
-}
-
-function chooseFirstDealer(){
-
-let names=players.map((p,i)=>`${i+1} - ${p.name}`).join("\n")
-
-let choice=prompt("Chi è stato il mazziere della prima mano?\n\n"+names)
-
-let index=parseInt(choice)-1
-
-if(index>=0 && index<players.length){
-dealerIndex=index
-}else{
-alert("Scelta non valida, verrà scelto il primo giocatore.")
-dealerIndex=0
-}
-
-}
-
-function updateDealerAfterRound(){
-
-let next=dealerIndex
-
-do{
-next=(next+1)%players.length
-}while(!players[next].active)
-
-dealerIndex=next
-
-}
-
-function addRound(){
-
-const snapshot={}
-
-document.querySelectorAll(".score-in").forEach(inp=>{
-
-const id=inp.dataset.id
-const val=parseInt(inp.value||0)
-
-const p=players.find(pl=>pl.id==id)
-
-snapshot[id]={prevScore:p.score,prevActive:p.active}
-
-p.score+=val
-p.playerHistory.push(val)
-
-})
-
-checkEliminations()
-
-history.push({snapshot,dealerIndex})
-
-document.querySelectorAll(".score-in").forEach(i=>i.value="")
-
-if(dealerIndex==-1){
-
-chooseFirstDealer()
-updateDealerAfterRound()
-
-}else{
-
-updateDealerAfterRound()
-
-}
-
-saveGame()
-render()
-
-}
-
-function checkSum(){
-
-let sum=0
-
-document.querySelectorAll(".score-in")
-.forEach(i=>sum+=parseInt(i.value||0))
-
-const display=document.getElementById("sum-display")
-const btn=document.getElementById("confirm-btn")
-
-display.innerText=`Somma: ${sum} / 21`
-
-if(sum==21){
-
-btn.disabled=false
-btn.classList.add("ready")
-display.className="sum-check sum-ok"
-
-}else{
-
-btn.disabled=true
-btn.classList.remove("ready")
-display.className="sum-check sum-err"
-
-}
-
-}
-
-function fillRete(targetId){
-
-let total=0
-let target=null
-
-document.querySelectorAll(".score-in").forEach(inp=>{
-
-const val=parseInt(inp.value)
-
-if(parseInt(inp.dataset.id)==targetId){
-target=inp
-}else{
-total+=isNaN(val)?0:val
-}
-
-})
-
-let diff=21-total
-
-if(diff<0)diff=0
-if(diff>21)diff=21
-
-if(target) target.value=diff
-
-checkSum()
-
-}
-
-function makeCappotto(winnerId){
-
-if(!confirm("Confermi Cappotto?"))return
-
-const snapshot={}
-
-players.forEach(p=>{
-
-if(p.active){
-
-snapshot[p.id]={prevScore:p.score,prevActive:p.active}
-
-const pts=p.id==winnerId?0:21
-
-p.score+=pts
-p.playerHistory.push(pts)
-
-}
-
-})
-
-checkEliminations()
-
-history.push({snapshot,dealerIndex})
-
-updateDealerAfterRound()
-
-saveGame()
-render()
-
-}
-
-function checkEliminations(){
-
-players.forEach(p=>{
-if(p.score>=limit)p.active=false
-})
-
-}
-
-function undoLast(){
-
-if(!history.length)return
-
-const last=history.pop()
-
-for(let id in last.snapshot){
-
-const p=players.find(pl=>pl.id==id)
-
-p.score=last.snapshot[id].prevScore
-p.active=last.snapshot[id].prevActive
-p.playerHistory.pop()
-
-}
-
-dealerIndex=last.dealerIndex
-
-saveGame()
-render()
-
-}
-
-function renderRanking(){
-
-const rank=document.getElementById("ranking-body")
-
-rank.innerHTML=""
-
-const sorted=[...players].sort((a,b)=>a.score-b.score)
-
-sorted.forEach((p,i)=>{
-
-let cls=""
-
-if(i<winners && p.active) cls="temp-winner"
-
-if(!p.active) cls="eliminated"
-
-const reversed=[...p.playerHistory].reverse()
-
-const badges=reversed.map((pt,idx)=>{
-
-const handNumber=p.playerHistory.length-idx
-
-return `<div class="badge-container">
-<span class="hand-num">${handNumber}</span>
-<span class="badge">${pt}</span>
-</div>`
-
-}).join("")
-
-const isDealer=(dealerIndex!=-1 && p.id==players[dealerIndex].id)?"leader":""
-
-rank.innerHTML+=`<tr class="${cls} ${isDealer}">
-<td>${i+1}</td>
-<td>${p.name} ${isDealer?"🃏":""}</td>
-<td><b>${p.score}</b></td>
-<td><div class="history-scroll-cell">${badges||"-"}</div></td>
-</tr>`
-
-})
-
-}
-
-function shareResults(){
-
-let text=`🏆 TRESSETTE A PERDERE - ${tableName}\n\n`
-
-const sorted=[...players].sort((a,b)=>a.score-b.score)
-
-sorted.forEach((p,i)=>{
-text+=`${i+1}. ${p.name} - ${p.score}\n`
-})
-
-if(navigator.share){
-navigator.share({title:"Risultati Tressette",text})
-}else{
-navigator.clipboard.writeText(text)
-alert("Risultati copiati")
-}
-
-}
-
-function resetGame(){
-
-if(confirm("Vuoi iniziare una nuova partita?")){
-
-localStorage.removeItem("tressetteGame")
-location.reload()
-
-}
-
-}
-
+// Inserisci qui tutte le funzioni Tressette del tuo codice originale
+// render(), addRound(), checkSum(), fillRete(), makeCappotto(), undoLast(), renderRanking(), shareResults(), resetGame()
 </script>
+
 </body>
 </html>
