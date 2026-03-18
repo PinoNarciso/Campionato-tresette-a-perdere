@@ -21,8 +21,9 @@
         .table-item { background: #fff; border-left: 5px solid #1a73e8; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .table-info { margin-bottom: 10px; }
         .table-info b { font-size: 16px; color: #333; }
-        .table-info span { font-size: 13px; color: #666; display: block; }
-        .actions { display: flex; gap: 8px; }
+        .table-info span { font-size: 13px; color: #666; display: block; margin-top: 5px; }
+        .players-list div { font-size: 14px; color: #444; margin-left: 10px; }
+        .actions { display: flex; gap: 8px; margin-top: 10px; }
         .btn-edit { background: #ffc107; color: #212529; flex: 1; }
         .btn-delete { background: #dc3545; color: white; flex: 1; }
     </style>
@@ -81,7 +82,7 @@
         const id = tableId || "table_" + Date.now();
         const data = {
             name: name,
-            players: document.getElementById("players").value,
+            players: document.getElementById("players").value.split(",").map(p => p.trim()), // array
             limit: Number(document.getElementById("limit").value),
             winners: Number(document.getElementById("winners").value),
             password: pass,
@@ -101,32 +102,32 @@
 
     // CARICA DATI NEL FORM PER MODIFICA
     function prepareEdit(id) {
-    db.ref("tables/" + id).once("value", snap => {
-        const t = snap.val();
+        db.ref("tables/" + id).once("value", snap => {
+            const t = snap.val();
 
-        document.getElementById("tableId").value = id;
-        document.getElementById("name").value = t.name;
-        document.getElementById("players").value = t.players;
-        document.getElementById("limit").value = t.limit;
-        document.getElementById("winners").value = t.winners;
-        document.getElementById("password").value = t.password;
+            document.getElementById("tableId").value = id;
+            document.getElementById("name").value = t.name;
+            document.getElementById("players").value = Array.isArray(t.players) ? t.players.join(", ") : (t.players || "");
+            document.getElementById("limit").value = t.limit;
+            document.getElementById("winners").value = t.winners;
+            document.getElementById("password").value = t.password;
 
-        document.getElementById("formTitle").innerText = "Modifica Tavolo";
-        document.getElementById("mainBtn").innerText = "Salva Modifiche";
-        document.getElementById("cancelBtn").style.display = "block";
-        window.scrollTo(0,0);
-    });
-}
+            document.getElementById("formTitle").innerText = "Modifica Tavolo";
+            document.getElementById("mainBtn").innerText = "Salva Modifiche";
+            document.getElementById("cancelBtn").style.display = "block";
+            window.scrollTo(0,0);
+        });
+    }
 
     // ELIMINA TAVOLO
-   function deleteTable(id) {
-    db.ref("tables/" + id).once("value", snap => {
-        const t = snap.val();
-        if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
-            db.ref("tables/" + id).remove();
-        }
-    });
-}
+    function deleteTable(id) {
+        db.ref("tables/" + id).once("value", snap => {
+            const t = snap.val();
+            if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
+                db.ref("tables/" + id).remove();
+            }
+        });
+    }
 
     function resetForm() {
         document.getElementById("tableId").value = "";
@@ -143,7 +144,7 @@
         const tables = snap.val() || {};
         const container = document.getElementById("tablesList");
         container.innerHTML = "";
-        
+
         const keys = Object.keys(tables);
         if(keys.length === 0) {
             container.innerHTML = '<p style="text-align:center; color:#999;">Nessun tavolo attivo al momento.</p>';
@@ -152,11 +153,17 @@
 
         for (let id in tables) {
             const t = tables[id];
+
+            // Assicurati che players sia sempre un array
+            const playersArray = Array.isArray(t.players) ? t.players : (t.players ? t.players.split(",").map(p => p.trim()) : []);
+            const playersList = playersArray.map(p => `<div>${p}</div>`).join('');
+
             container.innerHTML += `
                 <div class="table-item">
                     <div class="table-info">
                         <b>${t.name}</b>
-                        <span>Giocatori: ${t.players || 'Nessuno'}</span>
+                        <span>Giocatori:</span>
+                        <div class="players-list">${playersList}</div>
                         <span>Limite: ${t.limit} pt | Vincitori: ${t.winners}</span>
                     </div>
                     <div class="actions">
