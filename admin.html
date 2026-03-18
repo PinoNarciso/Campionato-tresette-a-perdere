@@ -1,53 +1,122 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<title>Admin Tavoli Tressette</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<script src="firebase.js"></script>
+    <meta charset="UTF-8">
+    <title>Admin Tavoli Tressette</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+    <script src="firebase.js"></script>
+    <style>
+        .table-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 8px; background: #f9f9f9; }
+        .actions { margin-top: 10px; }
+        button.delete { background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+        button.edit { background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; margin-right: 5px; }
+        #updateBtn { display: none; background-color: #2196F3; color: white; }
+    </style>
 </head>
 <body>
 
 <div class="card">
-<h2>Crea Tavolo</h2>
-<input id="name" placeholder="Nome Tavolo">
-<input id="players" placeholder="Mario,Luca,Anna">
-<input id="limit" type="number" value="81">
-<input id="winners" type="number" value="3">
-<input id="password" placeholder="Password tavolo">
-<button onclick="createTable()">Crea Tavolo</button>
+    <h2 id="formTitle">Crea Tavolo</h2>
+    <!-- Campo nascosto per gestire l'ID durante la modifica -->
+    <input type="hidden" id="tableId">
+    
+    <input id="name" placeholder="Nome Tavolo">
+    <input id="players" placeholder="Mario,Luca,Anna">
+    <input id="limit" type="number" value="81">
+    <input id="winners" type="number" value="3">
+    <input id="password" placeholder="Password tavolo">
+    
+    <button id="createBtn" onclick="saveTable()">Crea Tavolo</button>
+    <button id="updateBtn" onclick="saveTable()">Salva Modifiche</button>
+    <button id="cancelBtn" onclick="resetForm()" style="display:none;">Annulla</button>
 </div>
 
 <div class="card">
-<h3>Tavoli creati</h3>
-<div id="tables"></div>
+    <h3>Tavoli creati</h3>
+    <div id="tables"></div>
 </div>
 
 <script>
-function createTable(){
-  const id = "table_" + Date.now();
-  db.ref("tables/"+id).set({
-    name: document.getElementById("name").value,
-    players: document.getElementById("players").value,
-    limit: Number(document.getElementById("limit").value),
-    winners: Number(document.getElementById("winners").value),
-    password: document.getElementById("password").value,
-    editor: null,
-    game: null
-  });
-  alert("Tavolo creato su Firebase");
+// Funzione Unica per Salvare (Nuovo o Modifica)
+function saveTable() {
+    const id = document.getElementById("tableId").value || "table_" + Date.now();
+    const data = {
+        name: document.getElementById("name").value,
+        players: document.getElementById("players").value,
+        limit: Number(document.getElementById("limit").value),
+        winners: Number(document.getElementById("winners").value),
+        password: document.getElementById("password").value,
+        editor: null,
+        game: null
+    };
+
+    db.ref("tables/" + id).set(data)
+        .then(() => {
+            alert("Operazione completata con successo!");
+            resetForm();
+        })
+        .catch(error => alert("Errore: " + error.message));
 }
 
+// Funzione per caricare i dati nel form per la modifica
+function prepareEdit(id) {
+    db.ref("tables/" + id).once("value", snap => {
+        const t = snap.val();
+        document.getElementById("tableId").value = id;
+        document.getElementById("name").value = t.name;
+        document.getElementById("players").value = t.players;
+        document.getElementById("limit").value = t.limit;
+        document.getElementById("winners").value = t.winners;
+        document.getElementById("password").value = t.password;
+
+        // Cambia interfaccia
+        document.getElementById("formTitle").innerText = "Modifica Tavolo";
+        document.getElementById("createBtn").style.display = "none";
+        document.getElementById("updateBtn").style.display = "inline-block";
+        document.getElementById("cancelBtn").style.display = "inline-block";
+    });
+}
+
+// Funzione per eliminare
+function deleteTable(id) {
+    if(confirm("Vuoi davvero eliminare questo tavolo?")) {
+        db.ref("tables/" + id).remove();
+    }
+}
+
+// Reset del form
+function resetForm() {
+    document.getElementById("tableId").value = "";
+    document.querySelectorAll('input:not([type="number"])').forEach(i => i.value = "");
+    document.getElementById("limit").value = 81;
+    document.getElementById("winners").value = 3;
+    
+    document.getElementById("formTitle").innerText = "Crea Tavolo";
+    document.getElementById("createBtn").style.display = "inline-block";
+    document.getElementById("updateBtn").style.display = "none";
+    document.getElementById("cancelBtn").style.display = "none";
+}
+
+// Listener in tempo reale
 db.ref("tables").on("value", snap => {
-  const tables = snap.val() || {};
-  const div = document.getElementById("tables");
-  div.innerHTML = "";
-  for(let id in tables){
-    const t = tables[id];
-    div.innerHTML += `<div class="table"><b>${t.name}</b> - Giocatori: ${t.players}</div>`;
-  }
+    const tables = snap.val() || {};
+    const div = document.getElementById("tables");
+    div.innerHTML = "";
+    
+    for(let id in tables) {
+        const t = tables[id];
+        div.innerHTML += `
+            <div class="table-item">
+                <b>${t.name}</b> - Giocatori: ${t.players} <br>
+                <small>Limite: ${t.limit} | Vincitori: ${t.winners}</small>
+                <div class="actions">
+                    <button class="edit" onclick="prepareEdit('${id}')">Modifica</button>
+                    <button class="delete" onclick="deleteTable('${id}')">Elimina</button>
+                </div>
+            </div>`;
+    }
 });
 </script>
 
