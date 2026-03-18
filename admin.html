@@ -119,20 +119,14 @@
 }
 
     // ELIMINA TAVOLO
-    function deleteTable(id) {
-        db.ref("tables/" + id).once("value", snap => {
-            const t = snap.val();
-            const p = prompt("Inserisci la password per ELIMINARE il tavolo:");
-            
-            if (p === t.password) {
-                if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
-                    db.ref("tables/" + id).remove();
-                }
-            } else if (p !== null) {
-                alert("Password errata! Operazione annullata.");
-            }
-        });
-    }
+   function deleteTable(id) {
+    db.ref("tables/" + id).once("value", snap => {
+        const t = snap.val();
+        if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
+            db.ref("tables/" + id).remove();
+        }
+    });
+}
 
     function resetForm() {
         document.getElementById("tableId").value = "";
