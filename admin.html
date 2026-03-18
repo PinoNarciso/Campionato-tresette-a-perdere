@@ -10,7 +10,7 @@
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2, h3 { color: #1a73e8; margin-top: 0; text-align: center; }
         input { display: block; width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
         button { width: 100%; padding: 12px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; transition: 0.3s; }
@@ -26,6 +26,7 @@
         .actions { display: flex; gap: 8px; margin-top: 10px; }
         .btn-edit { background: #ffc107; color: #212529; flex: 1; }
         .btn-delete { background: #dc3545; color: white; flex: 1; }
+        #playersListCheckbox div { margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -34,7 +35,12 @@
     <h2 id="formTitle">Crea Nuovo Tavolo</h2>
     <input type="hidden" id="tableId">
     <input id="name" placeholder="Nome Tavolo">
-    <input id="players" placeholder="Giocatori (es: Mario, Luca, Anna, Paolo)">
+    
+    <div id="playersContainer">
+        <p>Seleziona i giocatori:</p>
+        <div id="playersListCheckbox"></div>
+    </div>
+    
     <input id="limit" type="number" value="81" title="Limite Punti">
     <input id="winners" type="number" value="3" title="Numero Vincitori">
     <input id="password" type="password" placeholder="Password per gestione tavolo">
@@ -62,11 +68,31 @@
       appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
     };
 
-    // Inizializzazione
+    // Inizializzazione Firebase
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
+
+    // CARICA GIOCATORI DAL DATABASE
+    function loadPlayers() {
+        db.ref("players").once("value", snap => {
+            const playersData = snap.val() || {};
+            const container = document.getElementById("playersListCheckbox");
+            container.innerHTML = "";
+            for (let id in playersData) {
+                const p = playersData[id];
+                const checkbox = document.createElement("div");
+                checkbox.innerHTML = `
+                    <label>
+                        <input type="checkbox" value="${p.name}"> ${p.name}
+                    </label>
+                `;
+                container.appendChild(checkbox);
+            }
+        });
+    }
+    loadPlayers();
 
     // SALVA O MODIFICA TAVOLO
     function saveTable() {
@@ -79,10 +105,13 @@
             return;
         }
 
+        const selectedPlayers = Array.from(document.querySelectorAll("#playersListCheckbox input:checked"))
+                                     .map(cb => cb.value);
+
         const id = tableId || "table_" + Date.now();
         const data = {
             name: name,
-            players: document.getElementById("players").value.split(",").map(p => p.trim()), // array
+            players: selectedPlayers,
             limit: Number(document.getElementById("limit").value),
             winners: Number(document.getElementById("winners").value),
             password: pass,
@@ -107,7 +136,6 @@
 
             document.getElementById("tableId").value = id;
             document.getElementById("name").value = t.name;
-            document.getElementById("players").value = Array.isArray(t.players) ? t.players.join(", ") : (t.players || "");
             document.getElementById("limit").value = t.limit;
             document.getElementById("winners").value = t.winners;
             document.getElementById("password").value = t.password;
@@ -116,6 +144,16 @@
             document.getElementById("mainBtn").innerText = "Salva Modifiche";
             document.getElementById("cancelBtn").style.display = "block";
             window.scrollTo(0,0);
+
+            // Deseleziona tutte le checkbox e seleziona quelle dei giocatori del tavolo
+            document.querySelectorAll("#playersListCheckbox input").forEach(cb => cb.checked = false);
+            if (Array.isArray(t.players)) {
+                t.players.forEach(pName => {
+                    const cb = Array.from(document.querySelectorAll("#playersListCheckbox input"))
+                                    .find(c => c.value === pName);
+                    if(cb) cb.checked = true;
+                });
+            }
         });
     }
 
@@ -132,11 +170,12 @@
     function resetForm() {
         document.getElementById("tableId").value = "";
         document.getElementById("name").value = "";
-        document.getElementById("players").value = "";
         document.getElementById("password").value = "";
         document.getElementById("formTitle").innerText = "Crea Nuovo Tavolo";
         document.getElementById("mainBtn").innerText = "Crea Tavolo";
         document.getElementById("cancelBtn").style.display = "none";
+        // Deseleziona tutte le checkbox
+        document.querySelectorAll("#playersListCheckbox input").forEach(cb => cb.checked = false);
     }
 
     // LISTENER REAL-TIME TAVOLI
@@ -153,9 +192,7 @@
 
         for (let id in tables) {
             const t = tables[id];
-
-            // Assicurati che players sia sempre un array
-            const playersArray = Array.isArray(t.players) ? t.players : (t.players ? t.players.split(",").map(p => p.trim()) : []);
+            const playersArray = Array.isArray(t.players) ? t.players : [];
             const playersList = playersArray.map(p => `<div>${p}</div>`).join('');
 
             container.innerHTML += `
