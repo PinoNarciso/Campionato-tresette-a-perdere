@@ -2,16 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>Tavoli Tressette</title>
+<title>Tresette a Perdere - Tavolo</title>
 <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-    .card { background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    h2 { text-align: center; color: #1a73e8; margin-top: 0; }
-    .table { background: #f8f9fa; padding: 10px 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .table b { color: #333; }
-    button { padding: 6px 12px; border: none; border-radius: 5px; background: #1a73e8; color: white; cursor: pointer; transition: 0.3s; }
-    button:hover { background: #1557b0; }
-    p.empty { color:#999; text-align:center; margin:20px 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display:flex; justify-content:center; }
+    .card { background:white; padding:20px; border-radius:12px; max-width:500px; width:100%; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+    h2, h3 { color: #1a73e8; margin-top:0; text-align:center;}
+    .player { background:#f8f9fa; padding:10px 15px; margin:5px 0; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
+    input { width:60px; padding:5px; border-radius:5px; border:1px solid #ccc; }
+    button { padding:6px 12px; border:none; border-radius:5px; background:#1a73e8; color:white; cursor:pointer; margin-left:5px; transition:0.3s;}
+    button:hover { background:#1557b0;}
+    p.empty { color:#999; text-align:center; }
 </style>
 
 <!-- Firebase -->
@@ -31,7 +31,7 @@ const firebaseConfig = {
 };
 
 // Inizializzazione Firebase
-if (!firebase.apps.length) {
+if(!firebase.apps.length){
   firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
@@ -41,39 +41,72 @@ const db = firebase.database();
 <body>
 
 <div class="card">
-    <h2>Tavoli disponibili</h2>
-    <div id="tables">
-        <p class="empty">Caricamento tavoli...</p>
+    <h2 id="tableName">Tavolo</h2>
+    <p id="tableInfo"></p>
+
+    <h3>Giocatori</h3>
+    <div id="playersList">
+        <p class="empty">Caricamento giocatori...</p>
+    </div>
+
+    <h3>Risultati</h3>
+    <div id="results">
+        <p class="empty">Nessun risultato ancora.</p>
     </div>
 </div>
 
 <script>
-const tablesDiv = document.getElementById("tables");
+const tableID = localStorage.getItem("tableID");
+const tableNameEl = document.getElementById("tableName");
+const tableInfoEl = document.getElementById("tableInfo");
+const playersListEl = document.getElementById("playersList");
+const resultsEl = document.getElementById("results");
 
-// Listener realtime per tavoli
-db.ref("tables").on("value", snap => {
-    const tables = snap.val() || {};
-    tablesDiv.innerHTML = "";
+if(!tableID){
+    tableNameEl.innerText = "Errore: Tavolo non selezionato!";
+}
 
-    const keys = Object.keys(tables);
-    if(keys.length === 0){
-        tablesDiv.innerHTML = '<p class="empty">Nessun tavolo disponibile.</p>';
-        return;
+// Listener tavolo
+db.ref("tables/" + tableID).on("value", snap => {
+    const t = snap.val();
+    if(!t) return;
+
+    tableNameEl.innerText = t.name;
+    tableInfoEl.innerText = `Limite punti: ${t.limit} | Vincitori: ${t.winners}`;
+
+    // Mostra giocatori con input per punteggio
+    const players = t.players ? t.players.split(",").map(p=>p.trim()) : [];
+    playersListEl.innerHTML = "";
+    if(players.length === 0){
+        playersListEl.innerHTML = '<p class="empty">Nessun giocatore.</p>';
+    } else {
+        players.forEach(p => {
+            const div = document.createElement("div");
+            div.className = "player";
+            div.innerHTML = `<span>${p}</span> <input type="number" placeholder="0" id="score_${p}"> <button onclick="saveScore('${p}')">Salva</button>`;
+            playersListEl.appendChild(div);
+        });
     }
 
-    keys.forEach(id => {
-        const t = tables[id];
-        const div = document.createElement("div");
-        div.className = "table";
-        div.innerHTML = `<b>${t.name}</b> - Giocatori: ${t.players || 'Nessuno'} <button onclick="enterTable('${id}')">Entra</button>`;
-        tablesDiv.appendChild(div);
-    });
+    // Mostra risultati
+    const game = t.game || {};
+    resultsEl.innerHTML = "";
+    let hasResults = false;
+    for(const player in game){
+        resultsEl.innerHTML += `<div class="player"><span>${player}</span><b>${game[player]} pt</b></div>`;
+        hasResults = true;
+    }
+    if(!hasResults) resultsEl.innerHTML = '<p class="empty">Nessun risultato ancora.</p>';
 });
 
-// Funzione per entrare nel tavolo
-function enterTable(id){
-    localStorage.setItem("tableID", id);
-    window.location.href = "tresetteaPerdere.html";
+// Salva punteggio
+function saveScore(player){
+    const input = document.getElementById(`score_${player}`);
+    const score = Number(input.value);
+    if(isNaN(score)) return;
+
+    db.ref(`tables/${tableID}/game/${player}`).set(score);
+    input.value = "";
 }
 </script>
 
