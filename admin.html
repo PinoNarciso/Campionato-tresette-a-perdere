@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Tavoli Tressette</title>
+
     <!-- Firebase Compat SDK -->
-    <script src="https://www.gstatic.com"></script>
-    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -48,133 +50,133 @@
 </div>
 
 <script>
-// CONFIGURAZIONE FIREBASE
-const firebaseConfig = {
-  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "campinato-tresette-a-perdere",
-  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-  messagingSenderId: "105475040052",
-  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-};
-
-// Inizializzazione
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-const db = firebase.database();
-
-// SALVA O MODIFICA TAVOLO
-function saveTable() {
-    const tableId = document.getElementById("tableId").value;
-    const name = document.getElementById("name").value;
-    const pass = document.getElementById("password").value;
-
-    if (!name || !pass) {
-        alert("Errore: Inserisci il nome del tavolo e imposta una password!");
-        return;
-    }
-
-    const id = tableId || "table_" + Date.now();
-    const data = {
-        name: name,
-        players: document.getElementById("players").value,
-        limit: Number(document.getElementById("limit").value),
-        winners: Number(document.getElementById("winners").value),
-        password: pass,
-        game: null
+    // CONFIGURAZIONE FIREBASE
+    const firebaseConfig = {
+      apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+      authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+      databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "campinato-tresette-a-perdere",
+      storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+      messagingSenderId: "105475040052",
+      appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
     };
 
-    db.ref("tables/" + id).set(data)
-    .then(() => {
-        alert(tableId ? "Tavolo aggiornato con successo!" : "Nuovo tavolo creato!");
-        resetForm();
-    })
-    .catch(e => {
-        console.error(e);
-        alert("Errore Firebase: Controlla le regole del database!");
-    });
-}
+    // Inizializzazione
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
 
-// CARICA DATI NEL FORM PER MODIFICA
-function prepareEdit(id) {
-    db.ref("tables/" + id).once("value", snap => {
-        const t = snap.val();
-        const p = prompt("Inserisci la password del tavolo per modificare:");
-        
-        if (p === t.password) {
-            document.getElementById("tableId").value = id;
-            document.getElementById("name").value = t.name;
-            document.getElementById("players").value = t.players;
-            document.getElementById("limit").value = t.limit;
-            document.getElementById("winners").value = t.winners;
-            document.getElementById("password").value = t.password;
+    // SALVA O MODIFICA TAVOLO
+    function saveTable() {
+        const tableId = document.getElementById("tableId").value;
+        const name = document.getElementById("name").value;
+        const pass = document.getElementById("password").value;
 
-            document.getElementById("formTitle").innerText = "Modifica Tavolo";
-            document.getElementById("mainBtn").innerText = "Salva Modifiche";
-            document.getElementById("cancelBtn").style.display = "block";
-            window.scrollTo(0,0);
-        } else if (p !== null) {
-            alert("Password errata!");
+        if (!name || !pass) {
+            alert("Errore: Inserisci il nome del tavolo e imposta una password!");
+            return;
         }
-    });
-}
 
-// ELIMINA TAVOLO
-function deleteTable(id) {
-    db.ref("tables/" + id).once("value", snap => {
-        const t = snap.val();
-        const p = prompt("Inserisci la password per ELIMINARE il tavolo:");
-        
-        if (p === t.password) {
-            if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
-                db.ref("tables/" + id).remove();
+        const id = tableId || "table_" + Date.now();
+        const data = {
+            name: name,
+            players: document.getElementById("players").value,
+            limit: Number(document.getElementById("limit").value),
+            winners: Number(document.getElementById("winners").value),
+            password: pass,
+            game: null
+        };
+
+        db.ref("tables/" + id).set(data)
+        .then(() => {
+            alert(tableId ? "Tavolo aggiornato con successo!" : "Nuovo tavolo creato!");
+            resetForm();
+        })
+        .catch(e => {
+            console.error(e);
+            alert("Errore Firebase: Controlla le regole del database!");
+        });
+    }
+
+    // CARICA DATI NEL FORM PER MODIFICA
+    function prepareEdit(id) {
+        db.ref("tables/" + id).once("value", snap => {
+            const t = snap.val();
+            const p = prompt("Inserisci la password del tavolo per modificare:");
+            
+            if (p === t.password) {
+                document.getElementById("tableId").value = id;
+                document.getElementById("name").value = t.name;
+                document.getElementById("players").value = t.players;
+                document.getElementById("limit").value = t.limit;
+                document.getElementById("winners").value = t.winners;
+                document.getElementById("password").value = t.password;
+
+                document.getElementById("formTitle").innerText = "Modifica Tavolo";
+                document.getElementById("mainBtn").innerText = "Salva Modifiche";
+                document.getElementById("cancelBtn").style.display = "block";
+                window.scrollTo(0,0);
+            } else if (p !== null) {
+                alert("Password errata!");
             }
-        } else if (p !== null) {
-            alert("Password errata! Operazione annullata.");
+        });
+    }
+
+    // ELIMINA TAVOLO
+    function deleteTable(id) {
+        db.ref("tables/" + id).once("value", snap => {
+            const t = snap.val();
+            const p = prompt("Inserisci la password per ELIMINARE il tavolo:");
+            
+            if (p === t.password) {
+                if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
+                    db.ref("tables/" + id).remove();
+                }
+            } else if (p !== null) {
+                alert("Password errata! Operazione annullata.");
+            }
+        });
+    }
+
+    function resetForm() {
+        document.getElementById("tableId").value = "";
+        document.getElementById("name").value = "";
+        document.getElementById("players").value = "";
+        document.getElementById("password").value = "";
+        document.getElementById("formTitle").innerText = "Crea Nuovo Tavolo";
+        document.getElementById("mainBtn").innerText = "Crea Tavolo";
+        document.getElementById("cancelBtn").style.display = "none";
+    }
+
+    // LISTENER REAL-TIME TAVOLI
+    db.ref("tables").on("value", snap => {
+        const tables = snap.val() || {};
+        const container = document.getElementById("tablesList");
+        container.innerHTML = "";
+        
+        const keys = Object.keys(tables);
+        if(keys.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999;">Nessun tavolo attivo al momento.</p>';
+            return;
+        }
+
+        for (let id in tables) {
+            const t = tables[id];
+            container.innerHTML += `
+                <div class="table-item">
+                    <div class="table-info">
+                        <b>${t.name}</b>
+                        <span>Giocatori: ${t.players || 'Nessuno'}</span>
+                        <span>Limite: ${t.limit} pt | Vincitori: ${t.winners}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
+                        <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
+                    </div>
+                </div>`;
         }
     });
-}
-
-function resetForm() {
-    document.getElementById("tableId").value = "";
-    document.getElementById("name").value = "";
-    document.getElementById("players").value = "";
-    document.getElementById("password").value = "";
-    document.getElementById("formTitle").innerText = "Crea Nuovo Tavolo";
-    document.getElementById("mainBtn").innerText = "Crea Tavolo";
-    document.getElementById("cancelBtn").style.display = "none";
-}
-
-// LISTENER REAL-TIME TAVOLI
-db.ref("tables").on("value", snap => {
-    const tables = snap.val() || {};
-    const container = document.getElementById("tablesList");
-    container.innerHTML = "";
-    
-    const keys = Object.keys(tables);
-    if(keys.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999;">Nessun tavolo attivo al momento.</p>';
-        return;
-    }
-
-    for (let id in tables) {
-        const t = tables[id];
-        container.innerHTML += `
-            <div class="table-item">
-                <div class="table-info">
-                    <b>${t.name}</b>
-                    <span>Giocatori: ${t.players || 'Nessuno'}</span>
-                    <span>Limite: ${t.limit} pt | Vincitori: ${t.winners}</span>
-                </div>
-                <div class="actions">
-                    <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
-                    <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
-                </div>
-            </div>`;
-    }
-});
 </script>
 
 </body>
