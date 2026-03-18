@@ -3,91 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Tavoli Tressette</title>
+    <!-- Caricamento librerie Firebase Compat -->
     <script src="https://www.gstatic.com"></script>
     <script src="https://www.gstatic.com"></script>
     <style>
-        body { font-family: sans-serif; background: #eee; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: 0 auto 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input { display: block; width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
-        .btn-save { background: #28a745; color: white; }
-        .btn-edit { background: #ffc107; margin-bottom: 5px; }
-        .btn-delete { background: #dc3545; color: white; }
-        .table-item { border-bottom: 1px solid #ddd; padding: 10px 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; max-width: 450px; margin: 0 auto 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2, h3 { margin-top: 0; color: #1a73e8; }
+        input { display: block; width: 100%; margin: 12px 0; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+        button { width: 100%; padding: 12px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; transition: 0.3s; }
+        .btn-main { background: #1a73e8; color: white; }
+        .btn-main:hover { background: #1557b0; }
+        .table-item { background: #fff; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
+        .actions { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-edit { background: #ffc107; color: #212529; flex: 1; }
+        .btn-delete { background: #dc3545; color: white; flex: 1; }
+        #cancelBtn { background: #6c757d; color: white; margin-top: 5px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="formTitle">Crea Tavolo</h2>
+    <h2 id="formTitle">Crea Nuovo Tavolo</h2>
     <input type="hidden" id="tableId">
     <input id="name" placeholder="Nome Tavolo">
-    <input id="players" placeholder="Giocatori (es: Mario, Luca)">
-    <input id="limit" type="number" value="81">
-    <input id="winners" type="number" value="3">
-    <input id="password" type="password" placeholder="Password per modifiche">
-    <button id="mainBtn" class="btn-save" onclick="saveTable()">Salva Tavolo</button>
-    <button id="cancelBtn" onclick="resetForm()" style="display:none; margin-top:5px;">Annulla</button>
+    <input id="players" placeholder="Giocatori (es: Mario, Luca, Anna)">
+    <input id="limit" type="number" value="81" title="Limite Punti">
+    <input id="winners" type="number" value="3" title="Numero Vincitori">
+    <input id="password" type="password" placeholder="Password Tavolo (obbligatoria)">
+    
+    <button id="mainBtn" class="btn-main" onclick="saveTable()">Crea Tavolo</button>
+    <button id="cancelBtn" onclick="resetForm()">Annulla Modifica</button>
 </div>
 
 <div class="card">
-    <h3>Tavoli Attivi</h3>
-    <div id="tables"></div>
+    <h3>Tavoli nel Database</h3>
+    <div id="tablesList"></div>
 </div>
 
 <script>
-// --- CONFIGURAZIONE FIREBASE ---
-// Assicurati che questi dati siano corretti o il codice non funzionerà!
+// Configurazione fornita
 const firebaseConfig = {
-    apiKey: "LA_TUA_API_KEY",
-    authDomain: "IL_TUO_PROGETTO.firebaseapp.com",
-    databaseURL: "https://IL_TUO_PROGETTO.firebaseio.com",
-    projectId: "IL_TUO_PROGETTO",
-    storageBucket: "IL_TUO_PROGETTO.appspot.com",
-    messagingSenderId: "ID_MESSAGGIO",
-    appId: "ID_APP"
+  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "campinato-tresette-a-perdere",
+  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+  messagingSenderId: "105475040052",
+  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
 };
 
 // Inizializzazione
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- FUNZIONI ---
-
+// SALVA O AGGIORNA
 function saveTable() {
-    const id = document.getElementById("tableId").value || "table_" + Date.now();
+    const tableId = document.getElementById("tableId").value;
     const name = document.getElementById("name").value;
     const pass = document.getElementById("password").value;
 
     if (!name || !pass) {
-        alert("Inserisci almeno Nome e Password!");
+        alert("Attenzione: Nome e Password sono necessari!");
         return;
     }
 
+    const id = tableId || "table_" + Date.now();
     const data = {
         name: name,
         players: document.getElementById("players").value,
         limit: Number(document.getElementById("limit").value),
         winners: Number(document.getElementById("winners").value),
-        password: pass
+        password: pass,
+        game: null
     };
 
     db.ref("tables/" + id).set(data)
-        .then(() => {
-            alert("Tavolo salvato nel database!");
-            resetForm();
-        })
-        .catch(err => alert("Errore: " + err.message));
+    .then(() => {
+        alert(tableId ? "Tavolo Aggiornato!" : "Tavolo Creato!");
+        resetForm();
+    })
+    .catch(e => alert("Errore: " + e.message));
 }
 
+// PREPARA MODIFICA
 function prepareEdit(id) {
     db.ref("tables/" + id).once("value", snap => {
         const t = snap.val();
-        const inputPass = prompt("Inserisci la password del tavolo per modificare:");
+        const p = prompt("Inserisci la password del tavolo per modificare:");
         
-        if (inputPass === t.password) {
+        if (p === t.password) {
             document.getElementById("tableId").value = id;
             document.getElementById("name").value = t.name;
             document.getElementById("players").value = t.players;
@@ -96,24 +101,27 @@ function prepareEdit(id) {
             document.getElementById("password").value = t.password;
 
             document.getElementById("formTitle").innerText = "Modifica Tavolo";
+            document.getElementById("mainBtn").innerText = "Salva Modifiche";
             document.getElementById("cancelBtn").style.display = "block";
-        } else {
-            alert("Password Errata!");
+            window.scrollTo(0,0);
+        } else if (p !== null) {
+            alert("Password errata!");
         }
     });
 }
 
+// ELIMINA
 function deleteTable(id) {
     db.ref("tables/" + id).once("value", snap => {
         const t = snap.val();
-        const inputPass = prompt("Inserisci la password per ELIMINARE il tavolo:");
+        const p = prompt("Inserisci la password per ELIMINARE il tavolo:");
         
-        if (inputPass === t.password) {
-            if(confirm("Eliminare definitivamente " + t.name + "?")) {
+        if (p === t.password) {
+            if (confirm("Sei sicuro di voler eliminare '" + t.name + "'?")) {
                 db.ref("tables/" + id).remove();
             }
-        } else {
-            alert("Password Errata!");
+        } else if (p !== null) {
+            alert("Password errata! Eliminazione annullata.");
         }
     });
 }
@@ -123,25 +131,31 @@ function resetForm() {
     document.getElementById("name").value = "";
     document.getElementById("players").value = "";
     document.getElementById("password").value = "";
-    document.getElementById("formTitle").innerText = "Crea Tavolo";
+    document.getElementById("formTitle").innerText = "Crea Nuovo Tavolo";
+    document.getElementById("mainBtn").innerText = "Crea Tavolo";
     document.getElementById("cancelBtn").style.display = "none";
 }
 
-// ASCOLTO DATI
+// ASCOLTATORE REAL-TIME
 db.ref("tables").on("value", snap => {
-    const list = snap.val() || {};
-    const container = document.getElementById("tables");
+    const tables = snap.val() || {};
+    const container = document.getElementById("tablesList");
     container.innerHTML = "";
-    for (let id in list) {
-        const t = list[id];
+    
+    for (let id in tables) {
+        const t = tables[id];
         container.innerHTML += `
             <div class="table-item">
-                <strong>${t.name}</strong> (${t.players})<br>
-                <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
-                <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
+                <strong>${t.name}</strong><br>
+                <small>Giocatori: ${t.players}</small><br>
+                <div class="actions">
+                    <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
+                    <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
+                </div>
             </div>`;
     }
 });
 </script>
+
 </body>
 </html>
