@@ -212,14 +212,32 @@ function start(){
             const data = snapshot.val();
 
             // Carica i giocatori
-            players = (data.players || []).map((p,i)=>({
+            players = [];
+
+if(data.players){
+    // Se è un array
+    if(Array.isArray(data.players)){
+        players = data.players.map((p,i)=>({
+            id: i,
+            name: p.name || p,
+            score: p.score || 0,
+            active: p.active !== undefined ? p.active : true,
+            playerHistory: p.playerHistory || []
+        }));
+    } else {
+        // Se è un oggetto Firebase
+        players = Object.keys(data.players).map((key, i)=>{
+            const p = data.players[key];
+            return {
                 id: i,
                 name: p.name || p,
                 score: p.score || 0,
                 active: p.active !== undefined ? p.active : true,
                 playerHistory: p.playerHistory || []
-            }));
-
+            };
+        });
+    }
+}
             history = data.history || [];
             limit = data.limit || 81;
             winners = data.winners || 1;
