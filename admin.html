@@ -3,78 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Tavoli Tressette</title>
-    <link rel="stylesheet" href="style.css">
     <script src="https://www.gstatic.com"></script>
     <script src="https://www.gstatic.com"></script>
-    <script src="firebase.js"></script>
     <style>
-        .table-item { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .actions { margin-top: 10px; }
-        button { cursor: pointer; padding: 8px 12px; border-radius: 4px; border: none; font-weight: bold; }
-        .btn-create { background: #28a745; color: white; width: 100%; margin-top: 10px; }
-        .btn-edit { background: #ffc107; color: #333; margin-right: 5px; }
+        body { font-family: sans-serif; background: #eee; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: 0 auto 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input { display: block; width: 100%; margin: 10px 0; padding: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold; }
+        .btn-save { background: #28a745; color: white; }
+        .btn-edit { background: #ffc107; margin-bottom: 5px; }
         .btn-delete { background: #dc3545; color: white; }
-        input { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .table-item { border-bottom: 1px solid #ddd; padding: 10px 0; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="formTitle">Nuovo Tavolo</h2>
+    <h2 id="formTitle">Crea Tavolo</h2>
     <input type="hidden" id="tableId">
-    <input id="name" placeholder="Nome Tavolo (es. Torneo Bar)">
-    <input id="players" placeholder="Nomi giocatori (es. Mario, Luca, Anna)">
-    <input id="limit" type="number" value="81" title="Limite punti">
-    <input id="winners" type="number" value="3" title="Numero vincitori">
-    <input id="password" type="password" placeholder="Imposta Password Tavolo">
-    
-    <button id="mainBtn" class="btn-create" onclick="saveTable()">Crea Tavolo</button>
-    <button id="cancelBtn" onclick="resetForm()" style="display:none; background:#6c757d; color:white; width:100%; margin-top:5px;">Annulla Modifica</button>
+    <input id="name" placeholder="Nome Tavolo">
+    <input id="players" placeholder="Giocatori (es: Mario, Luca)">
+    <input id="limit" type="number" value="81">
+    <input id="winners" type="number" value="3">
+    <input id="password" type="password" placeholder="Password per modifiche">
+    <button id="mainBtn" class="btn-save" onclick="saveTable()">Salva Tavolo</button>
+    <button id="cancelBtn" onclick="resetForm()" style="display:none; margin-top:5px;">Annulla</button>
 </div>
 
 <div class="card">
-    <h3>Lista Tavoli Attivi</h3>
+    <h3>Tavoli Attivi</h3>
     <div id="tables"></div>
 </div>
 
 <script>
-// FUNZIONE PER SALVARE (CREA O AGGIORNA)
+// --- CONFIGURAZIONE FIREBASE ---
+// Assicurati che questi dati siano corretti o il codice non funzionerà!
+const firebaseConfig = {
+    apiKey: "LA_TUA_API_KEY",
+    authDomain: "IL_TUO_PROGETTO.firebaseapp.com",
+    databaseURL: "https://IL_TUO_PROGETTO.firebaseio.com",
+    projectId: "IL_TUO_PROGETTO",
+    storageBucket: "IL_TUO_PROGETTO.appspot.com",
+    messagingSenderId: "ID_MESSAGGIO",
+    appId: "ID_APP"
+};
+
+// Inizializzazione
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
+
+// --- FUNZIONI ---
+
 function saveTable() {
+    const id = document.getElementById("tableId").value || "table_" + Date.now();
     const name = document.getElementById("name").value;
     const pass = document.getElementById("password").value;
-    
-    if(!name || !pass) {
-        alert("Nome e Password sono obbligatori per creare un tavolo!");
+
+    if (!name || !pass) {
+        alert("Inserisci almeno Nome e Password!");
         return;
     }
 
-    const id = document.getElementById("tableId").value || "table_" + Date.now();
-    
     const data = {
         name: name,
         players: document.getElementById("players").value,
         limit: Number(document.getElementById("limit").value),
         winners: Number(document.getElementById("winners").value),
-        password: pass,
-        editor: null,
-        game: null
+        password: pass
     };
 
     db.ref("tables/" + id).set(data)
         .then(() => {
-            alert("Dati salvati correttamente su Firebase!");
+            alert("Tavolo salvato nel database!");
             resetForm();
         })
-        .catch(err => alert("Errore nel salvataggio: " + err.message));
+        .catch(err => alert("Errore: " + err.message));
 }
 
-// FUNZIONE PER MODIFICARE (CHIEDE PASSWORD)
 function prepareEdit(id) {
     db.ref("tables/" + id).once("value", snap => {
         const t = snap.val();
-        const checkPass = prompt("Inserisci la password del tavolo per modificare:");
+        const inputPass = prompt("Inserisci la password del tavolo per modificare:");
         
-        if(checkPass === t.password) {
+        if (inputPass === t.password) {
             document.getElementById("tableId").value = id;
             document.getElementById("name").value = t.name;
             document.getElementById("players").value = t.players;
@@ -83,63 +96,52 @@ function prepareEdit(id) {
             document.getElementById("password").value = t.password;
 
             document.getElementById("formTitle").innerText = "Modifica Tavolo";
-            document.getElementById("mainBtn").innerText = "Aggiorna Tavolo";
-            document.getElementById("mainBtn").style.background = "#007bff";
             document.getElementById("cancelBtn").style.display = "block";
         } else {
-            alert("Password errata!");
+            alert("Password Errata!");
         }
     });
 }
 
-// FUNZIONE PER ELIMINARE (CHIEDE PASSWORD)
 function deleteTable(id) {
     db.ref("tables/" + id).once("value", snap => {
         const t = snap.val();
-        const checkPass = prompt("Inserisci la password del tavolo per eliminarlo:");
+        const inputPass = prompt("Inserisci la password per ELIMINARE il tavolo:");
         
-        if(checkPass === t.password) {
-            if(confirm("Sei sicuro di voler eliminare definitivamente il tavolo '" + t.name + "'?")) {
+        if (inputPass === t.password) {
+            if(confirm("Eliminare definitivamente " + t.name + "?")) {
                 db.ref("tables/" + id).remove();
             }
         } else {
-            alert("Password errata! Impossibile eliminare.");
+            alert("Password Errata!");
         }
     });
 }
 
 function resetForm() {
     document.getElementById("tableId").value = "";
-    document.querySelectorAll('input:not([type="number"])').forEach(i => i.value = "");
-    document.getElementById("limit").value = 81;
-    document.getElementById("winners").value = 3;
-    document.getElementById("formTitle").innerText = "Nuovo Tavolo";
-    document.getElementById("mainBtn").innerText = "Crea Tavolo";
-    document.getElementById("mainBtn").style.background = "#28a745";
+    document.getElementById("name").value = "";
+    document.getElementById("players").value = "";
+    document.getElementById("password").value = "";
+    document.getElementById("formTitle").innerText = "Crea Tavolo";
     document.getElementById("cancelBtn").style.display = "none";
 }
 
-// ASCOLTATORE DATABASE
+// ASCOLTO DATI
 db.ref("tables").on("value", snap => {
-    const tables = snap.val() || {};
-    const div = document.getElementById("tables");
-    div.innerHTML = "";
-    
-    for(let id in tables) {
-        const t = tables[id];
-        div.innerHTML += `
+    const list = snap.val() || {};
+    const container = document.getElementById("tables");
+    container.innerHTML = "";
+    for (let id in list) {
+        const t = list[id];
+        container.innerHTML += `
             <div class="table-item">
-                <strong>${t.name}</strong><br>
-                <small>Giocatori: ${t.players}</small><br>
-                <small>Target: ${t.limit} punti | Vincitori: ${t.winners}</small>
-                <div class="actions">
-                    <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
-                    <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
-                </div>
+                <strong>${t.name}</strong> (${t.players})<br>
+                <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
+                <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
             </div>`;
     }
 });
 </script>
-
 </body>
 </html>
