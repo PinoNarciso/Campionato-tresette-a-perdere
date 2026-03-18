@@ -83,36 +83,11 @@ db.ref("tables").on("value", snap => {
 });
 
 // Funzione per entrare nel tavolo
-// Funzione per entrare nel tavolo
 function enterTable(id){
-    db.ref("tables/" + id).once("value", snap => {
-        const t = snap.val();
-        if(!t) return;
-
-        // Assicuriamoci che players sia sempre un array
-        let playersArray = [];
-        if(Array.isArray(t.players)){
-            playersArray = t.players;
-        } else if(t.players){
-            // Se è una stringa separata da virgole
-            playersArray = t.players.split(",").map(p => p.trim());
-        }
-
-        // Salva solo dati necessari con players come array
-        const tableData = {
-            id: id,
-            name: t.name,
-            players: playersArray,
-            limit: t.limit,
-            winners: t.winners
-        };
-
-        localStorage.setItem("currentTable", JSON.stringify(tableData));
-
-        // Vai a tresetteaPerdere.html
-        window.location.href = "tresetteaPerdere.html";
-    });
-}}</script>
+    localStorage.setItem("tableID", id);
+    window.location.href = "tresetteaPerdere.html";
+}
+</script>
 
 </body>
 </html>
