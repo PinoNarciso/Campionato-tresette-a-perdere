@@ -1,98 +1,115 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<title>Admin Tavoli</title>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <meta charset="UTF-8">
+    <title>Admin Tavoli</title>
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
 </head>
-
 <body>
 
 <h1>Admin Tavoli</h1>
 
-<div id="login">
-  <input type="password" id="passAdmin" placeholder="Password admin">
-  <button onclick="login()">Entra</button>
+<!-- Sezione Login -->
+<div id="login-section">
+    <input type="password" id="passAdmin" placeholder="Password admin">
+    <button onclick="effettuaLogin()">Entra</button>
 </div>
 
+<!-- Pannello di Controllo -->
 <div id="panel" style="display:none">
-  <h2>Crea Tavolo</h2>
-  <input id="nome" placeholder="Nome Tavolo"><br><br>
-  <input id="giocatori" placeholder="Mario,Luca,Anna"><br><br>
-  <input id="password" placeholder="Password punteggio"><br><br>
-  <button onclick="crea()">Crea Tavolo</button>
+    <h2>Crea Tavolo</h2>
+    <input id="nome" placeholder="Nome Tavolo"><br><br>
+    <input id="giocatori" placeholder="Mario,Luca,Anna"><br><br>
+    <input id="password" placeholder="Password punteggio"><br><br>
+    <button onclick="crea()">Crea Tavolo</button>
 
-  <h2>Lista Tavoli</h2>
-  <div id="lista"></div>
+    <h2>Lista Tavoli</h2>
+    <div id="lista"></div>
 </div>
 
 <script>
 const ADMIN_PASSWORD = "admin123";
 
-// 🔥 FIREBASE CONFIG (TUA)
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "campinato-tresette-a-perdere",
-  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-  messagingSenderId: "105475040052",
-  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+    apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+    authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+    databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "campinato-tresette-a-perdere",
+    storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+    messagingSenderId: "105475040052",
+    appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 🔐 LOGIN
-function login(){
-  if(passAdmin.value === ADMIN_PASSWORD){
-    login.style.display="none";
-    panel.style.display="block";
-    carica();
-  } else alert("Password errata");
-}
+// 🔐 LOGIN (Rinominata per evitare conflitti con l'ID del DIV)
+function effettuaLogin(){
+    const inputPass = document.getElementById("passAdmin").value;
+    const loginDiv = document.getElementById("login-section");
+    const panelDiv = document.getElementById("panel");
 
-// ➕ CREA
-function crea(){
-  const id = Date.now();
-
-  db.ref("tavoli/"+id).set({
-    nome: nome.value,
-    giocatori: giocatori.value.split(","),
-    passwordScore: password.value
-  });
-
-  nome.value="";
-  giocatori.value="";
-  password.value="";
-}
-
-// 📥 CARICA
-function carica(){
-  db.ref("tavoli").on("value", snap=>{
-    const dati = snap.val() || {};
-    lista.innerHTML="";
-
-    for(let id in dati){
-      lista.innerHTML += `
-        <div style="border:1px solid #ccc; margin:5px; padding:10px;">
-          <b>${dati[id].nome}</b><br>
-          ${dati[id].giocatori.join(", ")}<br>
-          <button onclick="elimina('${id}')">❌ Elimina</button>
-        </div>
-      `;
+    if(inputPass === ADMIN_PASSWORD){
+        loginDiv.style.display = "none";
+        panelDiv.style.display = "block";
+        carica();
+    } else {
+        alert("Password errata");
     }
-  });
+}
+
+// ➕ CREA TAVOLO
+function crea(){
+    const nomeTavolo = document.getElementById("nome").value;
+    const listaGiocatori = document.getElementById("giocatori").value;
+    const pwdScore = document.getElementById("password").value;
+
+    if(!nomeTavolo || !listaGiocatori) {
+        alert("Inserisci nome e giocatori!");
+        return;
+    }
+
+    const id = Date.now();
+    db.ref("tavoli/" + id).set({
+        nome: nomeTavolo,
+        giocatori: listaGiocatori.split(",").map(g => g.trim()), // Rimuove spazi extra
+        passwordScore: pwdScore
+    });
+
+    // Pulisce i campi
+    document.getElementById("nome").value = "";
+    document.getElementById("giocatori").value = "";
+    document.getElementById("password").value = "";
+}
+
+// 📥 CARICA LISTA
+function carica(){
+    const listaDiv = document.getElementById("lista");
+    db.ref("tavoli").on("value", snap => {
+        const dati = snap.val() || {};
+        listaDiv.innerHTML = "";
+
+        for(let id in dati){
+            listaDiv.innerHTML += `
+                <div style="border:1px solid #ccc; margin:5px; padding:10px; border-radius:8px;">
+                    <b>${dati[id].nome}</b><br>
+                    Giocatori: ${dati[id].giocatori.join(", ")}<br>
+                    <button onclick="elimina('${id}')" style="color:red; margin-top:5px;">❌ Elimina Tavolo</button>
+                </div>
+            `;
+        }
+    });
 }
 
 // ❌ ELIMINA
 function elimina(id){
-  if(confirm("Eliminare tavolo?")){
-    db.ref("tavoli/"+id).remove();
-    db.ref("partite/"+id).remove();
-  }
+    if(confirm("Sei sicuro di voler eliminare questo tavolo e le relative partite?")){
+        db.ref("tavoli/" + id).remove();
+        db.ref("partite/" + id).remove();
+    }
 }
 </script>
 
