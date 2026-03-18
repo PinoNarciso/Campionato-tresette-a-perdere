@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tressette a Perdere - Pino Narciso</title>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <style>
 :root{
 --primary:#2c3e50;
@@ -45,19 +41,6 @@ font-size:1.3rem;
 color:var(--primary);
 }
 
-label{
-font-weight:bold;
-font-size:0.8rem;
-}
-
-input{
-width:100%;
-padding:8px;
-margin-bottom:10px;
-border-radius:6px;
-border:1px solid #ddd;
-}
-
 button{
 width:100%;
 padding:10px;
@@ -69,12 +52,10 @@ margin-bottom:6px;
 cursor:pointer;
 }
 
-.btn-main{background:var(--success);}
 .btn-cap{background:var(--warning);width:auto;padding:4px 8px;font-size:0.7rem;}
 .btn-rete{background:var(--info);width:auto;padding:4px 8px;font-size:0.7rem;}
 .btn-undo{background:#95a5a6;}
 .btn-share{background:var(--accent);}
-
 #confirm-btn{background:var(--danger);}
 #confirm-btn.ready{background:var(--success);}
 
@@ -149,20 +130,8 @@ font-size:0.75rem;
 }
 
 .leader{background:#e8f8f5;}
-
-.temp-winner{
-background:#e8f9ee;
-border-left:4px solid #27ae60;
-}
-
-.warning{background:#fff3cd;}
-
-.eliminated{
-background:#fdf2f2;
-color:#aaa;
-text-decoration:line-through;
-}
-
+.temp-winner{background:#e8f9ee;border-left:4px solid #27ae60;}
+.eliminated{background:#fdf2f2;color:#aaa;text-decoration:line-through;}
 .hidden{display:none}
 
 footer{
@@ -172,80 +141,43 @@ color:#777;
 margin:20px 0;
 }
 </style>
-</head>
 
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+</head>
 <body>
 
-<div class="card" id="setup">
-
-<h1>Nuovo Tavolo</h1>
-
-<label>Nome Tavolo</label>
-<input id="tableName" value="Tavolo 1">
-
-<label>Punti limite</label>
-<input type="number" id="limit" value="81">
-
-<label>Numero vincitori</label>
-<input type="number" id="winners" value="3" min="1">
-
-<label>Giocatori (separati da virgola)</label>
-<input id="names" placeholder="Mario, Luca, Anna">
-
-<button class="btn-main" onclick="start()">Inizia partita</button>
-
-</div>
-
 <div class="card hidden" id="game">
-
 <h1 id="displayTableName"></h1>
 
 <div id="inputs-area"></div>
 
-<div id="sum-display" class="sum-check sum-err">
-Somma: 0 / 21
-</div>
+<div id="sum-display" class="sum-check sum-err">Somma: 0 / 21</div>
 
-<button id="confirm-btn" onclick="addRound()" disabled>
-Conferma Mano
-</button>
+<button id="confirm-btn" onclick="addRound()" disabled>Conferma Mano</button>
 
 <h3>Classifica e storico</h3>
-
 <table>
 <thead>
 <tr>
-<th>N</th>
-<th>Nome</th>
-<th>Punti</th>
-<th>Storico</th>
+<th>N</th><th>Nome</th><th>Punti</th><th>Storico</th>
 </tr>
 </thead>
-
 <tbody id="ranking-body"></tbody>
 </table>
 
 <div style="margin-top:15px">
-
-<button class="btn-share" onclick="shareResults()">
-📤 Condividi risultati
-</button>
-
-<button class="btn-undo" onclick="undoLast()">
-↩️ Annulla ultima mano
-</button>
-
-<button style="background:#eee;color:#333" onclick="resetGame()">
-🔄 Nuova partita
-</button>
-
+<button class="btn-share" onclick="shareResults()">📤 Condividi risultati</button>
+<button class="btn-undo" onclick="undoLast()">↩️ Annulla ultima mano</button>
+<button style="background:#eee;color:#333" onclick="resetGame()">🔄 Nuova partita</button>
 </div>
 </div>
 
 <footer>© 2026 - Pino Narciso</footer>
 
 <script>
-// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
   authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
@@ -258,73 +190,58 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let players=[]
-let history=[]
-let limit=81
-let tableName="Tavolo 1"
-let winners=1
-let dealerIndex=-1
+let players=[], history=[], limit=81, tableName="", winners=1, dealerIndex=-1;
 
-function saveGameToFirebase(){
-    const gameData = { players, history, limit, tableName, winners, dealerIndex };
-    db.ref("tavoli/" + tableName).set(gameData)
-        .then(()=>console.log("Dati salvati su Firebase"))
-        .catch(err=>console.error("Errore salvataggio Firebase:", err));
+// Avvio automatico della partita con tableID da localStorage
+window.onload = function(){
+    start();
 }
 
-window.onload=function(){
-    const savedNames = localStorage.getItem("tressetteNames")
-    if(savedNames) document.getElementById("names").value = savedNames
+function start(){
+    const tableId = localStorage.getItem("tableID");
+    if(!tableId){
+        alert("ID tavolo non trovato. Ritorna alla pagina principale.");
+        window.location.href = "index.html";
+        return;
+    }
 
-    const table = document.getElementById("tableName").value || "Tavolo 1";
+    tableName = tableId;
 
-    db.ref("tavoli/" + table).get().then(snapshot=>{
+    db.ref("tables/" + tableName).get().then(snapshot=>{
         if(snapshot.exists()){
             const data = snapshot.val();
-            players = data.players || [];
+
+            // Carica i giocatori
+            players = (data.players || []).map((p,i)=>({
+                id: i,
+                name: p.name || p,
+                score: p.score || 0,
+                active: p.active !== undefined ? p.active : true,
+                playerHistory: p.playerHistory || []
+            }));
+
             history = data.history || [];
             limit = data.limit || 81;
-            tableName = data.tableName || "Tavolo 1";
             winners = data.winners || 1;
             dealerIndex = data.dealerIndex ?? -1;
 
             document.getElementById("displayTableName").innerText = tableName;
-            document.getElementById("setup").classList.add("hidden");
             document.getElementById("game").classList.remove("hidden");
+
             render();
+        } else {
+            alert("Tavolo non trovato!");
+            window.location.href = "index.html";
         }
     }).catch(err=>console.error("Errore caricamento Firebase:", err));
 }
 
-function start(){
-    const namesRaw = document.getElementById("names").value
-    localStorage.setItem("tressetteNames", namesRaw)
-
-    const names = namesRaw.split(",").map(n=>n.trim()).filter(n=>n)
-    if(names.length<2){ alert("Inserisci almeno 2 giocatori"); return }
-
-    limit = parseInt(document.getElementById("limit").value) || 81
-    winners = parseInt(document.getElementById("winners").value) || 1
-    tableName = document.getElementById("tableName").value
-
-    players = names.map((n,i)=>({id:i,name:n,score:0,active:true,playerHistory:[]}))
-    dealerIndex = -1
-
-    document.getElementById("displayTableName").innerText = tableName
-    document.getElementById("setup").classList.add("hidden")
-    document.getElementById("game").classList.remove("hidden")
-
-    saveGameToFirebase()
-    render()
-}
-
+// Render giocatori
 function render(){
-    const area = document.getElementById("inputs-area")
-    area.innerHTML=""
-
+    const area = document.getElementById("inputs-area");
+    area.innerHTML="";
     players.filter(p=>p.active).forEach(p=>{
-        const isDealer=(dealerIndex!=-1 && players[dealerIndex].id==p.id)?"leader":""
-
+        const isDealer=(dealerIndex!=-1 && players[dealerIndex].id==p.id)?"leader":"";
         area.innerHTML+=`
         <div class="player-row ${isDealer}">
             <span>${p.name} ${isDealer?"🃏":""}</span>
@@ -333,143 +250,148 @@ function render(){
                 <button class="btn-rete" onclick="fillRete(${p.id})">RETE</button>
                 <button class="btn-cap" onclick="makeCappotto(${p.id})">CAP</button>
             </div>
-        </div>`
-    })
-
-    renderRanking()
-    checkSum()
+        </div>`;
+    });
+    renderRanking();
+    checkSum();
 }
 
+// Funzioni principali
 function chooseFirstDealer(){
-    let names = players.map((p,i)=>`${i+1} - ${p.name}`).join("\n")
-    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n"+names)
-    let index = parseInt(choice)-1
-    if(index>=0 && index<players.length) dealerIndex=index
-    else { alert("Scelta non valida, verrà scelto il primo giocatore."); dealerIndex=0 }
+    let names = players.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
+    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n"+names);
+    let index = parseInt(choice)-1;
+    dealerIndex = (index>=0 && index<players.length)?index:0;
 }
 
 function updateDealerAfterRound(){
-    let next = dealerIndex
+    let next = dealerIndex;
     do{ next=(next+1)%players.length }while(!players[next].active)
-    dealerIndex=next
+    dealerIndex=next;
 }
 
 function addRound(){
-    const snapshot={}
+    const snapshot={};
     document.querySelectorAll(".score-in").forEach(inp=>{
-        const id = inp.dataset.id
-        const val = parseInt(inp.value||0)
-        const p = players.find(pl=>pl.id==id)
-        snapshot[id]={prevScore:p.score,prevActive:p.active}
-        p.score += val
-        p.playerHistory.push(val)
-    })
+        const id = inp.dataset.id;
+        const val = parseInt(inp.value||0);
+        const p = players.find(pl=>pl.id==id);
+        snapshot[id]={prevScore:p.score,prevActive:p.active};
+        p.score += val;
+        p.playerHistory.push(val);
+    });
 
-    checkEliminations()
-    history.push({snapshot,dealerIndex})
-    document.querySelectorAll(".score-in").forEach(i=>i.value="")
+    checkEliminations();
+    history.push({snapshot,dealerIndex});
+    document.querySelectorAll(".score-in").forEach(i=>i.value="");
 
-    if(dealerIndex==-1){ chooseFirstDealer() }
-    else{ updateDealerAfterRound() }
+    if(dealerIndex==-1) chooseFirstDealer();
+    else updateDealerAfterRound();
 
-    saveGameToFirebase()
-    render()
+    saveGameToFirebase();
+    render();
 }
 
 function checkSum(){
-    let sum=0
-    document.querySelectorAll(".score-in").forEach(i=>sum+=parseInt(i.value||0))
-    const display=document.getElementById("sum-display")
-    const btn=document.getElementById("confirm-btn")
-    display.innerText=`Somma: ${sum} / 21`
-    if(sum==21){ btn.disabled=false; btn.classList.add("ready"); display.className="sum-check sum-ok"}
-    else{ btn.disabled=true; btn.classList.remove("ready"); display.className="sum-check sum-err"}
+    let sum=0;
+    document.querySelectorAll(".score-in").forEach(i=>sum+=parseInt(i.value||0));
+    const display=document.getElementById("sum-display");
+    const btn=document.getElementById("confirm-btn");
+    display.innerText=`Somma: ${sum} / 21`;
+    if(sum==21){ btn.disabled=false; btn.classList.add("ready"); display.className="sum-check sum-ok";}
+    else{ btn.disabled=true; btn.classList.remove("ready"); display.className="sum-check sum-err";}
 }
 
 function fillRete(targetId){
-    let total=0, target=null
+    let total=0,target=null;
     document.querySelectorAll(".score-in").forEach(inp=>{
-        const val=parseInt(inp.value)
-        if(parseInt(inp.dataset.id)==targetId) target=inp
-        else total+=isNaN(val)?0:val
-    })
-    let diff = 21-total
-    if(diff<0) diff=0
-    if(diff>21) diff=21
-    if(target) target.value=diff
-    checkSum()
+        const val=parseInt(inp.value);
+        if(parseInt(inp.dataset.id)==targetId) target=inp;
+        else total+=isNaN(val)?0:val;
+    });
+    let diff=Math.min(Math.max(21-total,0),21);
+    if(target) target.value=diff;
+    checkSum();
 }
 
 function makeCappotto(winnerId){
-    if(!confirm("Confermi Cappotto?")) return
-    const snapshot={}
+    if(!confirm("Confermi Cappotto?")) return;
+    const snapshot={};
     players.forEach(p=>{
         if(p.active){
-            snapshot[p.id]={prevScore:p.score,prevActive:p.active}
-            const pts=p.id==winnerId?0:21
-            p.score+=pts
-            p.playerHistory.push(pts)
+            snapshot[p.id]={prevScore:p.score,prevActive:p.active};
+            const pts=p.id==winnerId?0:21;
+            p.score+=pts;
+            p.playerHistory.push(pts);
         }
-    })
-    checkEliminations()
-    history.push({snapshot,dealerIndex})
-    updateDealerAfterRound()
-    saveGameToFirebase()
-    render()
+    });
+    checkEliminations();
+    history.push({snapshot,dealerIndex});
+    updateDealerAfterRound();
+    saveGameToFirebase();
+    render();
 }
 
 function checkEliminations(){
-    players.forEach(p=>{ if(p.score>=limit) p.active=false })
-    const activeCount = players.filter(p=>p.active).length
-    if(activeCount <= winners) alert("Partita terminata!")
+    players.forEach(p=>{ if(p.score>=limit) p.active=false });
+    const activeCount = players.filter(p=>p.active).length;
+    if(activeCount <= winners) alert("Partita terminata!");
 }
 
 function undoLast(){
-    if(!history.length) return
-    const last = history.pop()
+    if(!history.length) return;
+    const last = history.pop();
     for(let id in last.snapshot){
-        const p = players.find(pl=>pl.id==id)
-        p.score = last.snapshot[id].prevScore
-        p.active = last.snapshot[id].prevActive
-        p.playerHistory.pop()
+        const p = players.find(pl=>pl.id==id);
+        p.score = last.snapshot[id].prevScore;
+        p.active = last.snapshot[id].prevActive;
+        p.playerHistory.pop();
     }
-    dealerIndex = last.dealerIndex
-    saveGameToFirebase()
-    render()
+    dealerIndex = last.dealerIndex;
+    saveGameToFirebase();
+    render();
 }
 
 function renderRanking(){
-    const rank=document.getElementById("ranking-body")
-    rank.innerHTML=""
-    const sorted=[...players].sort((a,b)=>a.score-b.score)
+    const rank=document.getElementById("ranking-body");
+    rank.innerHTML="";
+    const sorted=[...players].sort((a,b)=>a.score-b.score);
     sorted.forEach((p,i)=>{
-        let cls=""
-        if(i<winners && p.active) cls="temp-winner"
-        if(!p.active) cls="eliminated"
-        const reversed=[...p.playerHistory].reverse()
+        let cls="";
+        if(i<winners && p.active) cls="temp-winner";
+        if(!p.active) cls="eliminated";
+        const reversed=[...p.playerHistory].reverse();
         const badges=reversed.map((pt,idx)=>{
-            const handNumber=p.playerHistory.length-idx
-            return `<div class="badge-container"><span class="hand-num">${handNumber}</span><span class="badge">${pt}</span></div>`
-        }).join("")
-        const isDealer=(dealerIndex!=-1 && p.id==players[dealerIndex].id)?"leader":""
-        rank.innerHTML+=`<tr class="${cls} ${isDealer}"><td>${i+1}</td><td>${p.name} ${isDealer?"🃏":""}</td><td><b>${p.score}</b></td><td><div class="history-scroll-cell">${badges||"-"}</div></td></tr>`
-    })
+            const handNumber=p.playerHistory.length-idx;
+            return `<div class="badge-container"><span class="hand-num">${handNumber}</span><span class="badge">${pt}</span></div>`;
+        }).join("");
+        const isDealer=(dealerIndex!=-1 && p.id==players[dealerIndex].id)?"leader":"";
+        rank.innerHTML+=`<tr class="${cls} ${isDealer}"><td>${i+1}</td><td>${p.name} ${isDealer?"🃏":""}</td><td><b>${p.score}</b></td><td><div class="history-scroll-cell">${badges||"-"}</div></td></tr>`;
+    });
 }
 
 function shareResults(){
-    let text=`🏆 TRESSETTE A PERDERE - ${tableName}\n\n`
-    const sorted=[...players].sort((a,b)=>a.score-b.score)
-    sorted.forEach((p,i)=>{ text+=`${i+1}. ${p.name} - ${p.score}\n` })
-    if(navigator.share){ navigator.share({title:"Risultati Tressette",text}) }
-    else{ navigator.clipboard.writeText(text); alert("Risultati copiati") }
+    let text=`🏆 TRESSETTE A PERDERE - ${tableName}\n\n`;
+    const sorted=[...players].sort((a,b)=>a.score-b.score);
+    sorted.forEach((p,i)=>{ text+=`${i+1}. ${p.name} - ${p.score}\n` });
+    if(navigator.share){ navigator.share({title:"Risultati Tressette",text}); }
+    else{ navigator.clipboard.writeText(text); alert("Risultati copiati"); }
 }
 
 function resetGame(){
     if(confirm("Vuoi iniziare una nuova partita?")){
-        db.ref("tavoli/" + tableName).remove()
-        location.reload()
+        db.ref("tables/" + tableName).remove();
+        window.location.href = "index.html";
     }
 }
+
+function saveGameToFirebase(){
+    const gameData = { name: tableName, players, history, limit, winners, dealerIndex };
+    db.ref("tables/" + tableName).set(gameData)
+      .then(()=>console.log("Dati salvati su Firebase"))
+      .catch(err=>console.error("Errore salvataggio Firebase:", err));
+}
 </script>
+
 </body>
 </html>
