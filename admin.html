@@ -8,98 +8,118 @@
     <script src="https://www.gstatic.com"></script>
     <script src="firebase.js"></script>
     <style>
-        .table-item { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 8px; background: #f9f9f9; }
+        .table-item { border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .actions { margin-top: 10px; }
-        button.delete { background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
-        button.edit { background-color: #4CAF50; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; margin-right: 5px; }
-        #updateBtn { display: none; background-color: #2196F3; color: white; }
+        button { cursor: pointer; padding: 8px 12px; border-radius: 4px; border: none; font-weight: bold; }
+        .btn-create { background: #28a745; color: white; width: 100%; margin-top: 10px; }
+        .btn-edit { background: #ffc107; color: #333; margin-right: 5px; }
+        .btn-delete { background: #dc3545; color: white; }
+        input { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="formTitle">Crea Tavolo</h2>
-    <!-- Campo nascosto per gestire l'ID durante la modifica -->
+    <h2 id="formTitle">Nuovo Tavolo</h2>
     <input type="hidden" id="tableId">
+    <input id="name" placeholder="Nome Tavolo (es. Torneo Bar)">
+    <input id="players" placeholder="Nomi giocatori (es. Mario, Luca, Anna)">
+    <input id="limit" type="number" value="81" title="Limite punti">
+    <input id="winners" type="number" value="3" title="Numero vincitori">
+    <input id="password" type="password" placeholder="Imposta Password Tavolo">
     
-    <input id="name" placeholder="Nome Tavolo">
-    <input id="players" placeholder="Mario,Luca,Anna">
-    <input id="limit" type="number" value="81">
-    <input id="winners" type="number" value="3">
-    <input id="password" placeholder="Password tavolo">
-    
-    <button id="createBtn" onclick="saveTable()">Crea Tavolo</button>
-    <button id="updateBtn" onclick="saveTable()">Salva Modifiche</button>
-    <button id="cancelBtn" onclick="resetForm()" style="display:none;">Annulla</button>
+    <button id="mainBtn" class="btn-create" onclick="saveTable()">Crea Tavolo</button>
+    <button id="cancelBtn" onclick="resetForm()" style="display:none; background:#6c757d; color:white; width:100%; margin-top:5px;">Annulla Modifica</button>
 </div>
 
 <div class="card">
-    <h3>Tavoli creati</h3>
+    <h3>Lista Tavoli Attivi</h3>
     <div id="tables"></div>
 </div>
 
 <script>
-// Funzione Unica per Salvare (Nuovo o Modifica)
+// FUNZIONE PER SALVARE (CREA O AGGIORNA)
 function saveTable() {
+    const name = document.getElementById("name").value;
+    const pass = document.getElementById("password").value;
+    
+    if(!name || !pass) {
+        alert("Nome e Password sono obbligatori per creare un tavolo!");
+        return;
+    }
+
     const id = document.getElementById("tableId").value || "table_" + Date.now();
+    
     const data = {
-        name: document.getElementById("name").value,
+        name: name,
         players: document.getElementById("players").value,
         limit: Number(document.getElementById("limit").value),
         winners: Number(document.getElementById("winners").value),
-        password: document.getElementById("password").value,
+        password: pass,
         editor: null,
         game: null
     };
 
     db.ref("tables/" + id).set(data)
         .then(() => {
-            alert("Operazione completata con successo!");
+            alert("Dati salvati correttamente su Firebase!");
             resetForm();
         })
-        .catch(error => alert("Errore: " + error.message));
+        .catch(err => alert("Errore nel salvataggio: " + err.message));
 }
 
-// Funzione per caricare i dati nel form per la modifica
+// FUNZIONE PER MODIFICARE (CHIEDE PASSWORD)
 function prepareEdit(id) {
     db.ref("tables/" + id).once("value", snap => {
         const t = snap.val();
-        document.getElementById("tableId").value = id;
-        document.getElementById("name").value = t.name;
-        document.getElementById("players").value = t.players;
-        document.getElementById("limit").value = t.limit;
-        document.getElementById("winners").value = t.winners;
-        document.getElementById("password").value = t.password;
+        const checkPass = prompt("Inserisci la password del tavolo per modificare:");
+        
+        if(checkPass === t.password) {
+            document.getElementById("tableId").value = id;
+            document.getElementById("name").value = t.name;
+            document.getElementById("players").value = t.players;
+            document.getElementById("limit").value = t.limit;
+            document.getElementById("winners").value = t.winners;
+            document.getElementById("password").value = t.password;
 
-        // Cambia interfaccia
-        document.getElementById("formTitle").innerText = "Modifica Tavolo";
-        document.getElementById("createBtn").style.display = "none";
-        document.getElementById("updateBtn").style.display = "inline-block";
-        document.getElementById("cancelBtn").style.display = "inline-block";
+            document.getElementById("formTitle").innerText = "Modifica Tavolo";
+            document.getElementById("mainBtn").innerText = "Aggiorna Tavolo";
+            document.getElementById("mainBtn").style.background = "#007bff";
+            document.getElementById("cancelBtn").style.display = "block";
+        } else {
+            alert("Password errata!");
+        }
     });
 }
 
-// Funzione per eliminare
+// FUNZIONE PER ELIMINARE (CHIEDE PASSWORD)
 function deleteTable(id) {
-    if(confirm("Vuoi davvero eliminare questo tavolo?")) {
-        db.ref("tables/" + id).remove();
-    }
+    db.ref("tables/" + id).once("value", snap => {
+        const t = snap.val();
+        const checkPass = prompt("Inserisci la password del tavolo per eliminarlo:");
+        
+        if(checkPass === t.password) {
+            if(confirm("Sei sicuro di voler eliminare definitivamente il tavolo '" + t.name + "'?")) {
+                db.ref("tables/" + id).remove();
+            }
+        } else {
+            alert("Password errata! Impossibile eliminare.");
+        }
+    });
 }
 
-// Reset del form
 function resetForm() {
     document.getElementById("tableId").value = "";
     document.querySelectorAll('input:not([type="number"])').forEach(i => i.value = "");
     document.getElementById("limit").value = 81;
     document.getElementById("winners").value = 3;
-    
-    document.getElementById("formTitle").innerText = "Crea Tavolo";
-    document.getElementById("createBtn").style.display = "inline-block";
-    document.getElementById("updateBtn").style.display = "none";
+    document.getElementById("formTitle").innerText = "Nuovo Tavolo";
+    document.getElementById("mainBtn").innerText = "Crea Tavolo";
+    document.getElementById("mainBtn").style.background = "#28a745";
     document.getElementById("cancelBtn").style.display = "none";
 }
 
-// Listener in tempo reale
+// ASCOLTATORE DATABASE
 db.ref("tables").on("value", snap => {
     const tables = snap.val() || {};
     const div = document.getElementById("tables");
@@ -109,11 +129,12 @@ db.ref("tables").on("value", snap => {
         const t = tables[id];
         div.innerHTML += `
             <div class="table-item">
-                <b>${t.name}</b> - Giocatori: ${t.players} <br>
-                <small>Limite: ${t.limit} | Vincitori: ${t.winners}</small>
+                <strong>${t.name}</strong><br>
+                <small>Giocatori: ${t.players}</small><br>
+                <small>Target: ${t.limit} punti | Vincitori: ${t.winners}</small>
                 <div class="actions">
-                    <button class="edit" onclick="prepareEdit('${id}')">Modifica</button>
-                    <button class="delete" onclick="deleteTable('${id}')">Elimina</button>
+                    <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
+                    <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
                 </div>
             </div>`;
     }
