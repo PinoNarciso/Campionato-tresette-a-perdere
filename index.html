@@ -7,9 +7,11 @@
     body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
     .card { background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     h2 { text-align: center; color: #1a73e8; margin-top: 0; }
-    .table { background: #f8f9fa; padding: 10px 15px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .table { background: #f8f9fa; padding: 10px 15px; margin: 10px 0; border-radius: 8px; }
     .table b { color: #333; }
-    button { padding: 6px 12px; border: none; border-radius: 5px; background: #1a73e8; color: white; cursor: pointer; transition: 0.3s; }
+    .players-list div { margin-left: 10px; font-size: 14px; color: #444; }
+    .info { font-size: 13px; color: #666; margin-top: 5px; }
+    button { padding: 6px 12px; border: none; border-radius: 5px; background: #1a73e8; color: white; cursor: pointer; transition: 0.3s; margin-top: 5px; }
     button:hover { background: #1557b0; }
     p.empty { color:#999; text-align:center; margin:20px 0; }
 </style>
@@ -63,9 +65,19 @@ db.ref("tables").on("value", snap => {
 
     keys.forEach(id => {
         const t = tables[id];
+
+        // Assicurati che players sia sempre un array
+        const playersArray = Array.isArray(t.players) ? t.players : (t.players ? t.players.split(",").map(p => p.trim()) : []);
+        const playersList = playersArray.map(p => `<div>${p}</div>`).join('');
+
         const div = document.createElement("div");
         div.className = "table";
-        div.innerHTML = `<b>${t.name}</b> - Giocatori: ${t.players || 'Nessuno'} <button onclick="enterTable('${id}')">Entra</button>`;
+        div.innerHTML = `
+            <b>${t.name}</b>
+            <div class="players-list">${playersList}</div>
+            <div class="info">Limite punti: ${t.limit} | Vincitori: ${t.winners}</div>
+            <button onclick="enterTable('${id}')">Entra</button>
+        `;
         tablesDiv.appendChild(div);
     });
 });
