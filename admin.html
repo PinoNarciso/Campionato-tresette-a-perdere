@@ -101,27 +101,22 @@
 
     // CARICA DATI NEL FORM PER MODIFICA
     function prepareEdit(id) {
-        db.ref("tables/" + id).once("value", snap => {
-            const t = snap.val();
-            const p = prompt("Inserisci la password del tavolo per modificare:");
-            
-            if (p === t.password) {
-                document.getElementById("tableId").value = id;
-                document.getElementById("name").value = t.name;
-                document.getElementById("players").value = t.players;
-                document.getElementById("limit").value = t.limit;
-                document.getElementById("winners").value = t.winners;
-                document.getElementById("password").value = t.password;
+    db.ref("tables/" + id).once("value", snap => {
+        const t = snap.val();
 
-                document.getElementById("formTitle").innerText = "Modifica Tavolo";
-                document.getElementById("mainBtn").innerText = "Salva Modifiche";
-                document.getElementById("cancelBtn").style.display = "block";
-                window.scrollTo(0,0);
-            } else if (p !== null) {
-                alert("Password errata!");
-            }
-        });
-    }
+        document.getElementById("tableId").value = id;
+        document.getElementById("name").value = t.name;
+        document.getElementById("players").value = t.players;
+        document.getElementById("limit").value = t.limit;
+        document.getElementById("winners").value = t.winners;
+        document.getElementById("password").value = t.password;
+
+        document.getElementById("formTitle").innerText = "Modifica Tavolo";
+        document.getElementById("mainBtn").innerText = "Salva Modifiche";
+        document.getElementById("cancelBtn").style.display = "block";
+        window.scrollTo(0,0);
+    });
+}
 
     // ELIMINA TAVOLO
     function deleteTable(id) {
