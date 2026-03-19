@@ -7,26 +7,26 @@
         body { font-family: sans-serif; padding: 20px; background: #121212; color: #fff; text-align: center; }
         .container { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
         #status { padding: 15px; margin-bottom: 15px; border-radius: 4px; background: #444; font-weight: bold; }
-        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; font-family: monospace; }
+        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; font-size: 14px; }
         .success { background: #1b5e20 !important; }
         .error { background: #b71c1c !important; }
     </style>
 
-    <!-- Librerie caricate con defer rimosso per massima compatibilità -->
-    <script src="https://www.gstatic.com"></script>
-    <script src="https://www.gstatic.com"></script>
+    <!-- Usiamo UNKGPKG che è un CDN alternativo spesso non bloccato dagli AdBlock -->
+    <script src="https://unpkg.com"></script>
+    <script src="https://unpkg.com"></script>
 </head>
 <body>
 
 <div class="container">
-    <h1>🃏 Dati Realtime TreSette</h1>
-    <div id="status">Inizializzazione in corso...</div>
+    <h1>🃏 Monitor Realtime TreSette</h1>
+    <div id="status">Tentativo di connessione alternativo...</div>
     <div id="output"></div>
 </div>
 
 <script>
-    // Aspettiamo che tutto sia caricato (librerie incluse)
-    window.onload = function() {
+    // Funzione di inizializzazione forzata
+    function avviaFirebase() {
         const statusEl = document.getElementById('status');
         const outputEl = document.getElementById('output');
 
@@ -42,37 +42,35 @@
 
         if (typeof firebase !== 'undefined') {
             try {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 
                 const db = firebase.database();
-                const rootRef = db.ref('/');
-
-                statusEl.innerText = "✅ Database Collegato correttamente!";
+                statusEl.innerText = "✅ Sistema Connesso!";
                 statusEl.className = "success";
 
-                rootRef.on('value', (snapshot) => {
+                // Ascolta la radice del database
+                db.ref('/').on('value', (snapshot) => {
                     const data = snapshot.val();
-                    if (data) {
-                        outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
-                    } else {
-                        outputEl.innerHTML = "<p>Database connesso ma vuoto (null).</p>";
-                    }
-                }, (error) => {
-                    statusEl.innerText = "❌ Errore Permessi: " + error.message;
+                    outputEl.innerHTML = data 
+                        ? `<pre>${JSON.stringify(data, null, 4)}</pre>`
+                        : "<p>Connesso, ma non ci sono dati (Database vuoto).</p>";
+                }, (err) => {
+                    statusEl.innerText = "❌ Errore Permessi: " + err.message;
                     statusEl.className = "error";
                 });
-
             } catch (e) {
-                statusEl.innerText = "⚠️ Errore Configurazione: " + e.message;
+                statusEl.innerText = "⚠️ Errore Init: " + e.message;
                 statusEl.className = "error";
             }
         } else {
-            statusEl.innerText = "❌ ERRORE: Librerie Firebase bloccate dal browser o AdBlock.";
+            statusEl.innerText = "🚨 Blocco Totale Browser: Prova a cambiare browser o disattiva le estensioni.";
             statusEl.className = "error";
         }
-    };
+    }
+
+    // Prova a farlo partire subito, poi riprova dopo 1 secondo se fallisce
+    window.onload = avviaFirebase;
+    setTimeout(() => { if(document.getElementById('status').innerText.includes('Inizializzazione')) avviaFirebase(); }, 1000);
 </script>
 </body>
 </html>
