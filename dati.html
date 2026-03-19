@@ -2,33 +2,28 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TreSette - Monitor Dati</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #121212; color: #fff; }
+        body { font-family: sans-serif; padding: 20px; background: #121212; color: #fff; text-align: center; }
         .container { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
-        h1 { color: #f39c12; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        #status { padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #333; font-weight: bold; }
-        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; overflow-x: auto; border: 1px solid #444; }
-        .err { background: #600 !important; color: #fff; }
+        #status { padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #444; }
+        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; }
     </style>
+
+    <!-- LIBRERIE CARICATE DA CDN (NON MODIFICARE) -->
+    <script src="https://cdnjs.cloudflare.com"></script>
+    <script src="https://cdnjs.cloudflare.com"></script>
 </head>
 <body>
 
 <div class="container">
     <h1>🃏 Dati Realtime TreSette</h1>
-    <div id="status">Caricamento moduli Firebase...</div>
+    <div id="status">Connessione in corso...</div>
     <div id="output"></div>
 </div>
 
-<script type="module">
-    // Link completi alle librerie specifiche
-    import { initializeApp } from "https://www.gstatic.com";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com";
-
-    const statusEl = document.getElementById('status');
-    const outputEl = document.getElementById('output');
-
+<script>
+    // La tua configurazione
     const firebaseConfig = {
         apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
         authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
@@ -39,29 +34,37 @@
         appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
     };
 
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+
     try {
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const starCountRef = ref(db, '/');
+        // Inizializzazione standard
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        const db = firebase.database();
+        const rootRef = db.ref('/');
 
-        statusEl.innerText = "Connesso. In ascolto di modifiche...";
-        statusEl.style.background = "#1e4620";
+        statusEl.innerText = "✅ Collegato al Database";
+        statusEl.style.background = "#1b5e20";
 
-        onValue(starCountRef, (snapshot) => {
+        // Lettura dati
+        rootRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
             } else {
-                outputEl.innerHTML = "<p>Database vuoto.</p>";
+                outputEl.innerHTML = "<p>Database connesso ma non ci sono dati all'interno.</p>";
             }
         }, (error) => {
-            statusEl.innerText = "Errore permessi: " + error.message;
-            statusEl.className = "err";
+            statusEl.innerText = "❌ Errore: " + error.message;
+            statusEl.style.background = "#b71c1c";
         });
 
     } catch (e) {
-        statusEl.innerText = "Errore inizializzazione: " + e.message;
-        statusEl.className = "err";
+        statusEl.innerText = "⚠️ Errore caricamento: " + e.message;
+        statusEl.style.background = "#b71c1c";
     }
 </script>
 </body>
