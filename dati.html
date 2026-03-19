@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>TreSette - Lettura Dati</title>
+    <!-- Carichiamo Firebase senza attributi extra che causano CORS su file locali -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background: #2c3e50; color: white; }
+        .box { background: #34495e; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h1 { color: #f1c40f; border-bottom: 2px solid #f1c40f; padding-bottom: 10px; }
+        pre { background: #1a252f; padding: 15px; border-radius: 5px; color: #2ecc71; font-size: 14px; overflow-x: auto; border: 1px solid #444; }
+        .info { color: #bdc3c7; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h1>🃏 Campionato TreSette</h1>
+        <p id="status" class="info">Tentativo di connessione...</p>
+        <div id="data-container"></div>
+    </div>
+
+    <script>
+        // La tua configurazione originale
+        const firebaseConfig = {
+            apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+            authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+            databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "campinato-tresette-a-perdere",
+            storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+            messagingSenderId: "105475040052",
+            appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+        };
+
+        // Inizializzazione protetta
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            const db = firebase.database();
+            
+            // Leggiamo la radice del database
+            db.ref('/').on('value', (snapshot) => {
+                const data = snapshot.val();
+                document.getElementById('status').innerText = "✅ Connesso! Dati ricevuti:";
+                
+                if (data) {
+                    document.getElementById('data-container').innerHTML = 
+                        '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
+                } else {
+                    document.getElementById('data-container').innerHTML = 
+                        "<p>Il database è collegato ma è vuoto (null).</p>";
+                }
+            }, (error) => {
+                document.getElementById('status').innerText = "❌ Errore permessi: " + error.message;
+            });
+
+        } catch (e) {
+            document.getElementById('status').innerText = "⚠️ Errore critico: " + e.message;
+            console.error(e);
+        }
+    </script>
+</body>
+</html>
