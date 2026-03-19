@@ -6,66 +6,74 @@
     <style>
         body { font-family: sans-serif; padding: 20px; background: #121212; color: #fff; text-align: center; }
         .container { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
-        #status { padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #444; }
-        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; }
+        #status { padding: 15px; margin-bottom: 15px; border-radius: 4px; background: #444; font-weight: bold; }
+        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; font-family: monospace; }
+        .success { background: #1b5e20 !important; }
+        .error { background: #b71c1c !important; }
     </style>
 
-    <!-- LIBRERIE CARICATE DA CDN (NON MODIFICARE) -->
-    <script src="https://cdnjs.cloudflare.com"></script>
-    <script src="https://cdnjs.cloudflare.com"></script>
+    <!-- Librerie caricate con defer rimosso per massima compatibilità -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
 </head>
 <body>
 
 <div class="container">
     <h1>🃏 Dati Realtime TreSette</h1>
-    <div id="status">Connessione in corso...</div>
+    <div id="status">Inizializzazione in corso...</div>
     <div id="output"></div>
 </div>
 
 <script>
-    // La tua configurazione
-    const firebaseConfig = {
-        apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-        authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-        databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "campinato-tresette-a-perdere",
-        storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-        messagingSenderId: "105475040052",
-        appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-    };
+    // Aspettiamo che tutto sia caricato (librerie incluse)
+    window.onload = function() {
+        const statusEl = document.getElementById('status');
+        const outputEl = document.getElementById('output');
 
-    const statusEl = document.getElementById('status');
-    const outputEl = document.getElementById('output');
+        const firebaseConfig = {
+            apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+            authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+            databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "campinato-tresette-a-perdere",
+            storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+            messagingSenderId: "105475040052",
+            appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+        };
 
-    try {
-        // Inizializzazione standard
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        
-        const db = firebase.database();
-        const rootRef = db.ref('/');
+        if (typeof firebase !== 'undefined') {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                
+                const db = firebase.database();
+                const rootRef = db.ref('/');
 
-        statusEl.innerText = "✅ Collegato al Database";
-        statusEl.style.background = "#1b5e20";
+                statusEl.innerText = "✅ Database Collegato correttamente!";
+                statusEl.className = "success";
 
-        // Lettura dati
-        rootRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
-            } else {
-                outputEl.innerHTML = "<p>Database connesso ma non ci sono dati all'interno.</p>";
+                rootRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
+                    } else {
+                        outputEl.innerHTML = "<p>Database connesso ma vuoto (null).</p>";
+                    }
+                }, (error) => {
+                    statusEl.innerText = "❌ Errore Permessi: " + error.message;
+                    statusEl.className = "error";
+                });
+
+            } catch (e) {
+                statusEl.innerText = "⚠️ Errore Configurazione: " + e.message;
+                statusEl.className = "error";
             }
-        }, (error) => {
-            statusEl.innerText = "❌ Errore: " + error.message;
-            statusEl.style.background = "#b71c1c";
-        });
-
-    } catch (e) {
-        statusEl.innerText = "⚠️ Errore caricamento: " + e.message;
-        statusEl.style.background = "#b71c1c";
-    }
+        } else {
+            statusEl.innerText = "❌ ERRORE: Librerie Firebase bloccate dal browser o AdBlock.";
+            statusEl.className = "error";
+        }
+    };
 </script>
 </body>
 </html>
+
