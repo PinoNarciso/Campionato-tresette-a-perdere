@@ -1,215 +1,95 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <title>Admin Tavoli Tressette</title>
+<meta charset="UTF-8">
+<title>Admin Tavoli Tressette</title>
+<link rel="stylesheet" href="style.css">
 
-    <!-- Firebase Compat SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2, h3 { color: #1a73e8; margin-top: 0; text-align: center; }
-        input { display: block; width: 100%; margin: 10px 0; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        button { width: 100%; padding: 12px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; transition: 0.3s; }
-        .btn-primary { background: #1a73e8; color: white; margin-top: 10px; }
-        .btn-primary:hover { background: #1557b0; }
-        .btn-cancel { background: #6c757d; color: white; margin-top: 5px; display: none; }
-        
-        .table-item { background: #fff; border-left: 5px solid #1a73e8; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .table-info { margin-bottom: 10px; }
-        .table-info b { font-size: 16px; color: #333; }
-        .table-info span { font-size: 13px; color: #666; display: block; margin-top: 5px; }
-        .players-list div { font-size: 14px; color: #444; margin-left: 10px; }
-        .actions { display: flex; gap: 8px; margin-top: 10px; }
-        .btn-edit { background: #ffc107; color: #212529; flex: 1; }
-        .btn-delete { background: #dc3545; color: white; flex: 1; }
-        #playersListCheckbox div { margin: 5px 0; }
-    </style>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="firebase.js"></script>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="formTitle">Crea Nuovo Tavolo</h2>
-    <input type="hidden" id="tableId">
-    <input id="name" placeholder="Nome Tavolo">
-    
-    <div id="playersContainer">
-        <p>Seleziona i giocatori:</p>
-        <div id="playersListCheckbox"></div>
-    </div>
-    
-    <input id="limit" type="number" value="81" title="Limite Punti">
-    <input id="winners" type="number" value="3" title="Numero Vincitori">
-    <input id="password" type="password" placeholder="Password per gestione tavolo">
-    
-    <button id="mainBtn" class="btn-primary" onclick="saveTable()">Crea Tavolo</button>
-    <button id="cancelBtn" class="btn-cancel" onclick="resetForm()">Annulla</button>
+<h2>Crea Tavolo</h2>
+
+<input id="name" value="Tavolo 1">
+
+<label>Seleziona giocatori:</label>
+<select id="players" multiple style="height:150px; width:100%;"></select>
+
+<input id="limit" type="number" value="81">
+<input id="winners" type="number" value="3">
+<input id="password" placeholder="Password tavolo">
+
+<button onclick="createTable()">Crea Tavolo</button>
 </div>
 
 <div class="card">
-    <h3>Tavoli Attivi</h3>
-    <div id="tablesList">
-        <p style="text-align:center; color:#999;">Nessun tavolo caricato...</p>
-    </div>
+<h3>Tavoli creati</h3>
+<div id="tables"></div>
 </div>
 
 <script>
-    // CONFIGURAZIONE FIREBASE
-    const firebaseConfig = {
-      apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-      authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-      databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "campinato-tresette-a-perdere",
-      storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-      messagingSenderId: "105475040052",
-      appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-    };
 
-    // Inizializzazione Firebase
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
+// 🔹 Carica giocatori da Firebase
+db.ref("players").on("value", snap => {
+  const data = snap.val() || {};
+  const select = document.getElementById("players");
+  select.innerHTML = "";
 
-    // CARICA GIOCATORI DAL DATABASE
-    function loadPlayers() {
-        db.ref("players").once("value", snap => {
-            const playersData = snap.val() || {};
-            const container = document.getElementById("playersListCheckbox");
-            container.innerHTML = "";
-            for (let id in playersData) {
-                const p = playersData[id];
-                const checkbox = document.createElement("div");
-                checkbox.innerHTML = `
-                    <label>
-                        <input type="checkbox" value="${p.name}"> ${p.name}
-                    </label>
-                `;
-                container.appendChild(checkbox);
-            }
-        });
-    }
-    loadPlayers();
+  for(let id in data){
+    const p = data[id];
+    const option = document.createElement("option");
+    option.value = p.name;
+    option.textContent = p.name;
+    select.appendChild(option);
+  }
+});
 
-    // SALVA O MODIFICA TAVOLO
-    function saveTable() {
-        const tableId = document.getElementById("tableId").value;
-        const name = document.getElementById("name").value;
-        const pass = document.getElementById("password").value;
+// 🔹 Creazione tavolo
+function createTable(){
+  const id = "table_" + Date.now();
 
-        if (!name || !pass) {
-            alert("Errore: Inserisci il nome del tavolo e imposta una password!");
-            return;
-        }
+  const select = document.getElementById("players");
+  const selectedPlayers = Array.from(select.selectedOptions).map(o => o.value);
 
-        const selectedPlayers = Array.from(document.querySelectorAll("#playersListCheckbox input:checked"))
-                                     .map(cb => cb.value);
+  db.ref("tables/"+id).set({
+    name: document.getElementById("name").value || "Tavolo 1",
+    players: selectedPlayers,
+    limit: Number(document.getElementById("limit").value),
+    winners: Number(document.getElementById("winners").value),
+    password: document.getElementById("password").value,
+    editor: null,
+    game: null
+  });
 
-        const id = tableId || "table_" + Date.now();
-        const data = {
-            name: name,
-            players: selectedPlayers,
-            limit: Number(document.getElementById("limit").value),
-            winners: Number(document.getElementById("winners").value),
-            password: pass,
-            game: null
-        };
+  alert("Tavolo creato su Firebase");
+}
 
-        db.ref("tables/" + id).set(data)
-        .then(() => {
-            alert(tableId ? "Tavolo aggiornato con successo!" : "Nuovo tavolo creato!");
-            resetForm();
-        })
-        .catch(e => {
-            console.error(e);
-            alert("Errore Firebase: Controlla le regole del database!");
-        });
-    }
+// 🔹 Visualizza tavoli
+db.ref("tables").on("value", snap => {
+  const tables = snap.val() || {};
+  const div = document.getElementById("tables");
+  div.innerHTML = "";
 
-    // CARICA DATI NEL FORM PER MODIFICA
-    function prepareEdit(id) {
-        db.ref("tables/" + id).once("value", snap => {
-            const t = snap.val();
+  for(let id in tables){
+    const t = tables[id];
 
-            document.getElementById("tableId").value = id;
-            document.getElementById("name").value = t.name;
-            document.getElementById("limit").value = t.limit;
-            document.getElementById("winners").value = t.winners;
-            document.getElementById("password").value = t.password;
+    const players = Array.isArray(t.players)
+      ? t.players.join(", ")
+      : t.players;
 
-            document.getElementById("formTitle").innerText = "Modifica Tavolo";
-            document.getElementById("mainBtn").innerText = "Salva Modifiche";
-            document.getElementById("cancelBtn").style.display = "block";
-            window.scrollTo(0,0);
+    div.innerHTML += `
+      <div class="table">
+        <b>${t.name}</b><br>
+        Giocatori: ${players}
+      </div>
+    `;
+  }
+});
 
-            // Deseleziona tutte le checkbox e seleziona quelle dei giocatori del tavolo
-            document.querySelectorAll("#playersListCheckbox input").forEach(cb => cb.checked = false);
-            if (Array.isArray(t.players)) {
-                t.players.forEach(pName => {
-                    const cb = Array.from(document.querySelectorAll("#playersListCheckbox input"))
-                                    .find(c => c.value === pName);
-                    if(cb) cb.checked = true;
-                });
-            }
-        });
-    }
-
-    // ELIMINA TAVOLO
-    function deleteTable(id) {
-        db.ref("tables/" + id).once("value", snap => {
-            const t = snap.val();
-            if (confirm("Eliminare definitivamente il tavolo '" + t.name + "'?")) {
-                db.ref("tables/" + id).remove();
-            }
-        });
-    }
-
-    function resetForm() {
-        document.getElementById("tableId").value = "";
-        document.getElementById("name").value = "";
-        document.getElementById("password").value = "";
-        document.getElementById("formTitle").innerText = "Crea Nuovo Tavolo";
-        document.getElementById("mainBtn").innerText = "Crea Tavolo";
-        document.getElementById("cancelBtn").style.display = "none";
-        // Deseleziona tutte le checkbox
-        document.querySelectorAll("#playersListCheckbox input").forEach(cb => cb.checked = false);
-    }
-
-    // LISTENER REAL-TIME TAVOLI
-    db.ref("tables").on("value", snap => {
-        const tables = snap.val() || {};
-        const container = document.getElementById("tablesList");
-        container.innerHTML = "";
-
-        const keys = Object.keys(tables);
-        if(keys.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#999;">Nessun tavolo attivo al momento.</p>';
-            return;
-        }
-
-        for (let id in tables) {
-            const t = tables[id];
-            const playersArray = Array.isArray(t.players) ? t.players : [];
-            const playersList = playersArray.map(p => `<div>${p}</div>`).join('');
-
-            container.innerHTML += `
-                <div class="table-item">
-                    <div class="table-info">
-                        <b>${t.name}</b>
-                        <span>Giocatori:</span>
-                        <div class="players-list">${playersList}</div>
-                        <span>Limite: ${t.limit} pt | Vincitori: ${t.winners}</span>
-                    </div>
-                    <div class="actions">
-                        <button class="btn-edit" onclick="prepareEdit('${id}')">Modifica</button>
-                        <button class="btn-delete" onclick="deleteTable('${id}')">Elimina</button>
-                    </div>
-                </div>`;
-        }
-    });
 </script>
 
 </body>
