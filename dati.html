@@ -2,59 +2,62 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>TreSette - Monitor Dati</title>
+    <title>TreSette - Lettura Diretta</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: #eee; padding: 20px; text-align: center; }
-        .container { max-width: 700px; margin: auto; background: #1e1e1e; padding: 25px; border-radius: 12px; border: 1px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        #status { padding: 15px; margin-bottom: 20px; border-radius: 6px; background: #333; font-weight: bold; border-left: 5px solid #f39c12; }
-        pre { background: #000; padding: 20px; border-radius: 8px; color: #00ff00; text-align: left; overflow-x: auto; font-family: 'Courier New', monospace; border: 1px solid #444; }
-        .ok { border-left: 5px solid #2ecc71 !important; color: #2ecc71; }
+        .container { max-width: 700px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+        #status { padding: 10px; margin-bottom: 20px; border-radius: 5px; background: #333; }
+        pre { background: #000; padding: 15px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; }
+        button { padding: 10px 20px; cursor: pointer; background: #f39c12; border: none; border-radius: 5px; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🃏 Dati Realtime TreSette</h1>
-    <div id="status">Connessione tramite Skypack CDN...</div>
+    <h1>🃏 TreSette - Lettura JSON</h1>
+    <div id="status">In attesa di caricamento...</div>
+    <button onclick="leggiDati()">Aggiorna Dati Manualmente</button>
     <div id="output"></div>
 </div>
 
-<script type="module">
-    // USIAMO SKYPACK: Unisce tutto in link sicuri che non danno errori CORS
-    import { initializeApp } from 'https://cdn.skypack.dev';
-    import { getDatabase, ref, onValue } from 'https://cdn.skypack.dev';
+<script>
+    async function leggiDati() {
+        const statusEl = document.getElementById('status');
+        const outputEl = document.getElementById('output');
+        
+        // URL diretto al tuo database con l'estensione .json
+        const url = "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-        authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-        databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "campinato-tresette-a-perdere",
-        storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-        messagingSenderId: "105475040052",
-        appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-    };
+        statusEl.innerText = "🔄 Caricamento in corso...";
 
-    const statusEl = document.getElementById('status');
-    const outputEl = document.getElementById('output');
+        try {
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error("Errore HTTP: " + response.status + ". Verifica le REGRE (Rules) su Firebase.");
+            }
 
-    try {
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const dbRef = ref(db, '/');
+            const data = await response.json();
 
-        onValue(dbRef, (snapshot) => {
-            const data = snapshot.val();
-            statusEl.innerText = "✅ SISTEMA ONLINE - Dati sincronizzati";
-            statusEl.className = "ok";
-            outputEl.innerHTML = data 
-                ? `<pre>${JSON.stringify(data, null, 4)}</pre>`
-                : "Il database risponde correttamente ma non contiene dati.";
-        }, (err) => {
-            statusEl.innerText = "❌ Errore permessi database: " + err.message;
-        });
-    } catch (e) {
-        statusEl.innerText = "🚨 Errore inizializzazione: " + e.message;
+            if (data === null) {
+                statusEl.innerText = "⚠️ Connesso, ma il DATABASE È VUOTO.";
+                outputEl.innerHTML = "<p>Inserisci dei dati manualmente nella console Firebase per vederli qui.</p>";
+            } else {
+                statusEl.innerText = "✅ DATI RICEVUTI CON SUCCESSO!";
+                statusEl.style.color = "#2ecc71";
+                outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
+            }
+        } catch (error) {
+            statusEl.innerText = "❌ ERRORE: " + error.message;
+            statusEl.style.color = "#e74c3c";
+            console.error(error);
+        }
     }
+
+    // Carica i dati all'apertura
+    window.onload = leggiDati;
+    // Aggiorna ogni 10 secondi
+    setInterval(leggiDati, 10000);
 </script>
 </body>
 </html>
