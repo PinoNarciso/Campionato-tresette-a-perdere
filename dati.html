@@ -8,15 +8,13 @@
         .container { max-width: 700px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
         #status { padding: 10px; margin-bottom: 20px; border-radius: 5px; background: #333; }
         pre { background: #000; padding: 15px; color: #00ff00; text-align: left; overflow-x: auto; border: 1px solid #444; }
-        button { padding: 10px 20px; cursor: pointer; background: #f39c12; border: none; border-radius: 5px; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>🃏 TreSette - Lettura JSON</h1>
-    <div id="status">In attesa di caricamento...</div>
-    <button onclick="leggiDati()">Aggiorna Dati Manualmente</button>
+    <div id="status">Verifica permessi...</div>
     <div id="output"></div>
 </div>
 
@@ -25,39 +23,28 @@
         const statusEl = document.getElementById('status');
         const outputEl = document.getElementById('output');
         
-        // URL diretto al tuo database con l'estensione .json
+        // NOTA: .json alla fine è OBBLIGATORIO
         const url = "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app";
-
-        statusEl.innerText = "🔄 Caricamento in corso...";
 
         try {
             const response = await fetch(url);
             
-            if (!response.ok) {
-                throw new Error("Errore HTTP: " + response.status + ". Verifica le REGRE (Rules) su Firebase.");
+            // Se Firebase ti rimanda alla console, significa che le Rules sono chiuse
+            if (response.redirected) {
+                statusEl.innerHTML = "❌ ERRORE: Accesso negato. <br><b>Devi impostare '.read': true nelle Rules di Firebase!</b>";
+                return;
             }
 
             const data = await response.json();
-
-            if (data === null) {
-                statusEl.innerText = "⚠️ Connesso, ma il DATABASE È VUOTO.";
-                outputEl.innerHTML = "<p>Inserisci dei dati manualmente nella console Firebase per vederli qui.</p>";
-            } else {
-                statusEl.innerText = "✅ DATI RICEVUTI CON SUCCESSO!";
-                statusEl.style.color = "#2ecc71";
-                outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
-            }
+            statusEl.innerText = "✅ Dati caricati con successo!";
+            outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
+            
         } catch (error) {
-            statusEl.innerText = "❌ ERRORE: " + error.message;
-            statusEl.style.color = "#e74c3c";
-            console.error(error);
+            statusEl.innerText = "❌ Errore di connessione: " + error.message;
         }
     }
 
-    // Carica i dati all'apertura
     window.onload = leggiDati;
-    // Aggiorna ogni 10 secondi
-    setInterval(leggiDati, 10000);
 </script>
 </body>
 </html>
