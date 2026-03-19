@@ -5,67 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TreSette - Dati Campionato</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #121212; color: #e0e0e0; }
-        .box { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 1px solid #333; }
-        h1 { color: #ff9800; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        pre { background: #000; padding: 15px; border-radius: 5px; color: #4caf50; overflow-x: auto; }
-        .error { color: #f44336; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #1a1a1a; color: #eee; }
+        .container { max-width: 900px; margin: auto; background: #252525; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #f39c12; margin-top: 0; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        #status { font-weight: bold; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+        .success { background: #1e4620; color: #4caf50; }
+        .loading { background: #333; color: #bbb; }
+        pre { background: #000; padding: 20px; border-radius: 8px; color: #00ff00; overflow-x: auto; font-size: 14px; border: 1px solid #444; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h1>🃏 Dati TreSette (Realtime)</h1>
-        <p id="status">Inizializzazione Firebase...</p>
-        <div id="data-container"></div>
+    <div class="container">
+        <h1>🃏 Dati Realtime TreSette</h1>
+        <div id="status" class="loading">Inizializzazione moduli Firebase...</div>
+        <div id="output"></div>
     </div>
 
-    <!-- CARICAMENTO LIBRERIE FIREBASE (Versione 8.10.1) -->
-    <script src="https://www.gstatic.com"></script>
-    <script src="https://www.gstatic.com"></script>
+    <script type="module">
+        // Importiamo i moduli Firebase direttamente (Versione Moderna)
+        import { initializeApp } from "https://www.gstatic.com";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com";
 
-    <script>
-        // Funzione che parte solo dopo che le librerie sono caricate
-        window.onload = function() {
-            const status = document.getElementById('status');
-            
-            // Verifica se Firebase è stato caricato correttamente
-            if (typeof firebase === 'undefined') {
-                status.innerHTML = "<span class='error'>ERRORE: Le librerie Firebase non sono state caricate. Controlla la connessione o i link.</span>";
-                return;
-            }
+        const firebaseConfig = {
+            apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+            authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+            databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "campinato-tresette-a-perdere",
+            storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+            messagingSenderId: "105475040052",
+            appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+        };
 
-            const firebaseConfig = {
-                apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-                authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-                databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-                projectId: "campinato-tresette-a-perdere",
-                storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-                messagingSenderId: "105475040052",
-                appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-            };
+        const statusEl = document.getElementById('status');
+        const outputEl = document.getElementById('output');
 
-            // Inizializza
-            firebase.initializeApp(firebaseConfig);
-            const db = firebase.database();
-            
-            status.innerText = "Connesso. In attesa di dati...";
+        try {
+            // Inizializza Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getDatabase(app);
+            const dbRef = ref(db, '/'); // Legge tutto il database
 
-            // Ascolta i cambiamenti nel database
-            db.ref('/').on('value', (snapshot) => {
+            statusEl.innerText = "Connessione stabilita. In ascolto...";
+            statusEl.className = "success";
+
+            // Ascolto in tempo reale
+            onValue(dbRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    status.innerText = "Dati sincronizzati correttamente:";
-                    document.getElementById('data-container').innerHTML = 
-                        '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
+                    outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
                 } else {
-                    status.innerText = "Connesso, ma il database è VUOTO.";
+                    outputEl.innerHTML = "<p>Database connesso ma vuoto.</p>";
                 }
             }, (error) => {
-                status.innerHTML = "<span class='error'>Errore Firebase: " + error.message + "</span>";
+                statusEl.innerText = "Errore di lettura: " + error.message;
+                statusEl.style.background = "#600";
             });
-        };
+
+        } catch (err) {
+            statusEl.innerText = "Errore critico: " + err.message;
+            statusEl.style.background = "#600";
+        }
     </script>
 </body>
-</html>
 </html>
