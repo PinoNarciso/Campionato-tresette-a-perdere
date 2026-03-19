@@ -3,21 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <title>Admin Tavoli Tressette</title>
+
 <link rel="stylesheet" href="style.css">
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="firebase.js"></script>
+
+<!-- Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f0f2f5;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  max-width: 500px;
+}
+
+button {
+  padding: 8px;
+  margin-top: 5px;
+  cursor: pointer;
+}
+
+.actions button {
+  width: 48%;
+}
+
+.table {
+  background: #fafafa;
+  padding: 15px;
+  margin-top: 10px;
+  border-radius: 6px;
+  line-height: 1.6;
+}
+</style>
+
 </head>
 <body>
 
 <div class="card">
-<h2>Crea Tavolo</h2>
-<input id="name" placeholder="Nome Tavolo">
-<input id="players" placeholder="Mario,Luca,Anna">
-<input id="limit" type="number" value="81">
-<input id="winners" type="number" value="3">
-<input id="password" placeholder="Password tavolo">
-<button onclick="createTable()">Crea Tavolo</button>
+<h2>Crea / Modifica Tavolo</h2>
+
+<input id="name" value="Tavolo 1" style="width:100%; margin-bottom:10px;">
+
+<label>Carica file giocatori (.xlsx):</label>
+<input type="file" id="fileInput" accept=".xlsx" style="margin-bottom:10px;">
+
+<label>Seleziona giocatori:</label>
+<select id="players" multiple style="height:150px; width:100%; margin-bottom:10px;"></select>
+
+<input id="limit" type="number" value="81" style="width:100%; margin-bottom:10px;">
+<input id="winners" type="number" value="3" style="width:100%; margin-bottom:10px;">
+<input id="password" placeholder="Password tavolo" style="width:100%; margin-bottom:10px;">
+
+<button onclick="saveTable()">Salva Tavolo</button>
 </div>
 
 <div class="card">
@@ -26,29 +75,127 @@
 </div>
 
 <script>
-function createTable(){
-  const id = "table_" + Date.now();
+
+let editingId = null;
+
+// ✅ CARICA GIOCATORI DA EXCEL
+document.getElementById("fileInput").addEventListener("change", function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(evt){
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    const select = document.getElementById("players");
+    select.innerHTML = "";
+
+    json.forEach(row => {
+      const nome = row.Giocatore;
+      if(nome){
+        const option = document.createElement("option");
+        option.value = nome;
+        option.textContent = nome;
+        select.appendChild(option);
+      }
+    });
+
+    alert("Giocatori caricati!");
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+
+
+// ✅ SALVA (CREA O MODIFICA)
+function saveTable(){
+  const id = editingId || ("table_" + Date.now());
+
+  const select = document.getElementById("players");
+  const selectedPlayers = Array.from(select.selectedOptions).map(o => o.value);
+
+  if(selectedPlayers.length === 0){
+    alert("Seleziona almeno un giocatore");
+    return;
+  }
+
   db.ref("tables/"+id).set({
-    name: document.getElementById("name").value,
-    players: document.getElementById("players").value,
+    name: document.getElementById("name").value || "Tavolo 1",
+    players: selectedPlayers,
     limit: Number(document.getElementById("limit").value),
     winners: Number(document.getElementById("winners").value),
     password: document.getElementById("password").value,
     editor: null,
     game: null
   });
-  alert("Tavolo creato su Firebase");
+
+  editingId = null;
+  alert("Tavolo salvato!");
 }
 
+
+// ✅ ELIMINA
+function deleteTable(id){
+  if(confirm("Vuoi eliminare questo tavolo?")){
+    db.ref("tables/"+id).remove();
+  }
+}
+
+
+// ✅ MODIFICA
+function editTable(id, table){
+  editingId = id;
+
+  document.getElementById("name").value = table.name;
+  document.getElementById("limit").value = table.limit;
+  document.getElementById("winners").value = table.winners;
+  document.getElementById("password").value = table.password;
+
+  const select = document.getElementById("players");
+
+  // seleziona i giocatori già presenti
+  Array.from(select.options).forEach(opt => {
+    opt.selected = table.players.includes(opt.value);
+  });
+
+  window.scrollTo(0,0);
+}
+
+
+// ✅ VISUALIZZA TAVOLI
 db.ref("tables").on("value", snap => {
   const tables = snap.val() || {};
   const div = document.getElementById("tables");
   div.innerHTML = "";
+
   for(let id in tables){
     const t = tables[id];
-    div.innerHTML += `<div class="table"><b>${t.name}</b> - Giocatori: ${t.players}</div>`;
+
+    const playersList = Array.isArray(t.players)
+      ? t.players.join("<br>")
+      : t.players;
+
+    div.innerHTML += `
+      <div class="table">
+        <b>${t.name}</b><br><br>
+        ${playersList}
+        <br><br>
+        Limite punti: ${t.limit} | Vincitori: ${t.winners}
+        
+        <div class="actions">
+          <button onclick='editTable("${id}", ${JSON.stringify(t)})'>✏️ Modifica</button>
+          <button onclick='deleteTable("${id}")'>❌ Elimina</button>
+        </div>
+      </div>
+    `;
   }
 });
+
 </script>
 
 </body>
