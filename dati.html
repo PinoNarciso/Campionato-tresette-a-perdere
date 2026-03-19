@@ -3,69 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TreSette - Dati Campionato</title>
+    <title>TreSette - Monitor Dati</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #1a1a1a; color: #eee; }
-        .container { max-width: 900px; margin: auto; background: #252525; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h1 { color: #f39c12; margin-top: 0; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        #status { font-weight: bold; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
-        .success { background: #1e4620; color: #4caf50; }
-        .loading { background: #333; color: #bbb; }
-        pre { background: #000; padding: 20px; border-radius: 8px; color: #00ff00; overflow-x: auto; font-size: 14px; border: 1px solid #444; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #121212; color: #fff; }
+        .container { max-width: 800px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+        h1 { color: #f39c12; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        #status { padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #333; font-weight: bold; }
+        pre { background: #000; padding: 15px; border-radius: 5px; color: #00ff00; overflow-x: auto; border: 1px solid #444; }
+        .err { background: #600 !important; color: #fff; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>🃏 Dati Realtime TreSette</h1>
-        <div id="status" class="loading">Inizializzazione moduli Firebase...</div>
-        <div id="output"></div>
-    </div>
+<div class="container">
+    <h1>🃏 Dati Realtime TreSette</h1>
+    <div id="status">Caricamento moduli Firebase...</div>
+    <div id="output"></div>
+</div>
 
-    <script type="module">
-        // Importiamo i moduli Firebase direttamente (Versione Moderna)
-        import { initializeApp } from "https://www.gstatic.com";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com";
+<script type="module">
+    // Link completi alle librerie specifiche
+    import { initializeApp } from "https://www.gstatic.com";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-            authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-            databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "campinato-tresette-a-perdere",
-            storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-            messagingSenderId: "105475040052",
-            appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-        };
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
 
-        const statusEl = document.getElementById('status');
-        const outputEl = document.getElementById('output');
+    const firebaseConfig = {
+        apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+        authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+        databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "campinato-tresette-a-perdere",
+        storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+        messagingSenderId: "105475040052",
+        appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+    };
 
-        try {
-            // Inizializza Firebase
-            const app = initializeApp(firebaseConfig);
-            const db = getDatabase(app);
-            const dbRef = ref(db, '/'); // Legge tutto il database
+    try {
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const starCountRef = ref(db, '/');
 
-            statusEl.innerText = "Connessione stabilita. In ascolto...";
-            statusEl.className = "success";
+        statusEl.innerText = "Connesso. In ascolto di modifiche...";
+        statusEl.style.background = "#1e4620";
 
-            // Ascolto in tempo reale
-            onValue(dbRef, (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
-                } else {
-                    outputEl.innerHTML = "<p>Database connesso ma vuoto.</p>";
-                }
-            }, (error) => {
-                statusEl.innerText = "Errore di lettura: " + error.message;
-                statusEl.style.background = "#600";
-            });
+        onValue(starCountRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                outputEl.innerHTML = `<pre>${JSON.stringify(data, null, 4)}</pre>`;
+            } else {
+                outputEl.innerHTML = "<p>Database vuoto.</p>";
+            }
+        }, (error) => {
+            statusEl.innerText = "Errore permessi: " + error.message;
+            statusEl.className = "err";
+        });
 
-        } catch (err) {
-            statusEl.innerText = "Errore critico: " + err.message;
-            statusEl.style.background = "#600";
-        }
-    </script>
+    } catch (e) {
+        statusEl.innerText = "Errore inizializzazione: " + e.message;
+        statusEl.className = "err";
+    }
+</script>
 </body>
 </html>
