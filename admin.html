@@ -89,12 +89,12 @@ button {
 </div>
 
 <script>
-
+// ==================== VARIABILI GLOBALI ====================
 let editingId = null;
 let selectedOrder = [];
 const playersContainer = document.getElementById("playersContainer");
 
-// ✅ CARICAMENTO GIOCATORI DA EXCEL
+// ==================== CARICAMENTO GIOCATORI DA EXCEL ====================
 document.getElementById("fileInput").addEventListener("change", function(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -112,7 +112,15 @@ document.getElementById("fileInput").addEventListener("change", function(e){
     selectedOrder = [];
 
     json.forEach(row => {
-      const nome = row.Giocatore;
+      let nome = null;
+      if(row.Giocatore){
+        if(typeof row.Giocatore === "object" && row.Giocatore.v){
+          nome = String(row.Giocatore.v);
+        } else {
+          nome = String(row.Giocatore);
+        }
+      }
+
       if(nome){
         const label = document.createElement("label");
         label.style.display = "block";
@@ -123,7 +131,7 @@ document.getElementById("fileInput").addEventListener("change", function(e){
         checkbox.value = nome;
         checkbox.style.marginRight = "8px";
 
-        const span = document.createElement("span"); // numero
+        const span = document.createElement("span");
         span.textContent = "";
 
         checkbox.addEventListener("change", function(){
@@ -132,7 +140,7 @@ document.getElementById("fileInput").addEventListener("change", function(e){
           } else {
             selectedOrder = selectedOrder.filter(v => v !== this.value);
           }
-          // aggiorna numeri accanto ai checkbox
+
           Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
             const cb = lab.querySelector("input");
             const idx = selectedOrder.indexOf(cb.value);
@@ -148,16 +156,16 @@ document.getElementById("fileInput").addEventListener("change", function(e){
       }
     });
 
-    alert("Giocatori caricati!");
+    alert("Giocatori caricati correttamente!");
   };
 
   reader.readAsArrayBuffer(file);
 });
 
-// ✅ SALVA TAVOLO
+// ==================== SALVA TAVOLO ====================
 function saveTable(){
   if(selectedOrder.length === 0){
-    alert("Seleziona almeno un giocatore");
+    alert("Seleziona almeno un giocatore!");
     return;
   }
 
@@ -165,7 +173,7 @@ function saveTable(){
 
   db.ref("tables/"+id).set({
     name: document.getElementById("name").value || "Tavolo 1",
-    players: selectedOrder,
+    players: selectedOrder.map(p => String(p)), // solo nomi
     limit: Number(document.getElementById("limit").value),
     winners: Number(document.getElementById("winners").value),
     password: document.getElementById("password").value,
@@ -176,23 +184,22 @@ function saveTable(){
   editingId = null;
   selectedOrder = [];
 
-  // deseleziona tutte le checkbox
   Array.from(playersContainer.querySelectorAll("input[type=checkbox]")).forEach(cb => {
     cb.checked = false;
     cb.previousSibling.textContent = "";
   });
 
-  alert("Tavolo salvato!");
+  alert("Tavolo salvato correttamente!");
 }
 
-// ✅ ELIMINA TAVOLO
+// ==================== ELIMINA TAVOLO ====================
 function deleteTable(id){
   if(confirm("Vuoi eliminare questo tavolo?")){
     db.ref("tables/"+id).remove();
   }
 }
 
-// ✅ MODIFICA TAVOLO
+// ==================== MODIFICA TAVOLO ====================
 function editTable(id){
   db.ref("tables/"+id).once("value").then(snap => {
     const table = snap.val();
@@ -207,7 +214,6 @@ function editTable(id){
 
     selectedOrder = table.players.slice();
 
-    // seleziona le checkbox e aggiorna numeri
     Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
       const cb = lab.querySelector("input");
       if(selectedOrder.includes(cb.value)){
@@ -224,7 +230,7 @@ function editTable(id){
   });
 }
 
-// ✅ VISUALIZZAZIONE TAVOLI con numeri tavolo + numeri giocatori
+// ==================== VISUALIZZAZIONE TAVOLI ====================
 db.ref("tables").on("value", snap => {
   const tables = snap.val() || {};
   const div = document.getElementById("tables");
@@ -236,8 +242,15 @@ db.ref("tables").on("value", snap => {
     const t = tables[id];
 
     const playersList = Array.isArray(t.players)
-      ? t.players.map((p,i) => `${i+1}. ${p}`).join("<br>")
-      : t.players;
+      ? t.players.map((p,i) => {
+          // Se è un oggetto, prendi solo il nome
+          if(typeof p === "object" && p !== null){
+            return `${i+1}. ${p.name || "Giocatore"}`;
+          } else {
+            return `${i+1}. ${String(p)}`;
+          }
+        }).join("<br>")
+      : String(t.players);
 
     div.innerHTML += `
       <div class="table">
@@ -254,6 +267,24 @@ db.ref("tables").on("value", snap => {
     `;
 
     tableIndex++;
+  }
+});
+
+// ==================== PULIZIA VECCHI TAVOLI ====================
+db.ref("tables").once("value").then(snap => {
+  const tables = snap.val() || {};
+  for(let id in tables){
+    const t = tables[id];
+    if(Array.isArray(t.players)){
+      const newPlayers = t.players.map(p => {
+        if(typeof p === "object" && p !== null){
+          return p.name || "Giocatore";
+        } else {
+          return String(p);
+        }
+      });
+      db.ref("tables/"+id+"/players").set(newPlayers);
+    }
   }
 });
 </script>

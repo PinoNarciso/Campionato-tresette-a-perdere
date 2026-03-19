@@ -171,7 +171,6 @@ margin:20px 0;
 <div style="margin-top:15px">
 <button class="btn-share" onclick="shareResults()">📤 Condividi risultati</button>
 <button class="btn-undo" onclick="undoLast()">↩️ Annulla ultima mano</button>
-<button style="background:#eee;color:#333" onclick="resetGame()">🔄 Nuova partita</button>
 </div>
 </div>
 
@@ -193,51 +192,47 @@ const db = firebase.database();
 let players=[], history=[], limit=81, tableName="", winners=1, dealerIndex=-1;
 
 // Avvio automatico della partita con tableID da localStorage
-window.onload = function(){
-    start();
-}
+window.onload = function(){ start(); }
 
 function start(){
     const tableId = localStorage.getItem("tableID");
-    if(!tableId){
-        alert("ID tavolo non trovato. Ritorna alla pagina principale.");
+    tableName = localStorage.getItem("tableName");
+
+    if(!tableId || !tableName){
+        alert("ID o nome tavolo non trovato. Ritorna alla pagina principale.");
         window.location.href = "index.html";
         return;
     }
 
-    tableName = tableId;
-
-    db.ref("tables/" + tableName).get().then(snapshot=>{
+    db.ref("tables/" + tableId).get().then(snapshot=>{
         if(snapshot.exists()){
             const data = snapshot.val();
 
             // Carica i giocatori
             players = [];
+            if(data.players){
+                if(Array.isArray(data.players)){
+                    players = data.players.map((p,i)=>({
+                        id: i,
+                        name: p.name || p,
+                        score: p.score || 0,
+                        active: p.active !== undefined ? p.active : true,
+                        playerHistory: p.playerHistory || []
+                    }));
+                } else {
+                    players = Object.keys(data.players).map((key, i)=>{
+                        const p = data.players[key];
+                        return {
+                            id: i,
+                            name: p.name || p,
+                            score: p.score || 0,
+                            active: p.active !== undefined ? p.active : true,
+                            playerHistory: p.playerHistory || []
+                        };
+                    });
+                }
+            }
 
-if(data.players){
-    // Se è un array
-    if(Array.isArray(data.players)){
-        players = data.players.map((p,i)=>({
-            id: i,
-            name: p.name || p,
-            score: p.score || 0,
-            active: p.active !== undefined ? p.active : true,
-            playerHistory: p.playerHistory || []
-        }));
-    } else {
-        // Se è un oggetto Firebase
-        players = Object.keys(data.players).map((key, i)=>{
-            const p = data.players[key];
-            return {
-                id: i,
-                name: p.name || p,
-                score: p.score || 0,
-                active: p.active !== undefined ? p.active : true,
-                playerHistory: p.playerHistory || []
-            };
-        });
-    }
-}
             history = data.history || [];
             limit = data.limit || 81;
             winners = data.winners || 1;
@@ -274,21 +269,33 @@ function render(){
     checkSum();
 }
 
-// Funzioni principali
+// Funzioni mazziere
 function chooseFirstDealer(){
-    let names = players.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
-    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n"+names);
+    let activePlayers = players.filter(p=>p.active);
+    let names = activePlayers.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
+    
+    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n" + names);
     let index = parseInt(choice)-1;
-    dealerIndex = (index>=0 && index<players.length)?index:0;
+
+    if(index>=0 && index<activePlayers.length){
+        dealerIndex = players.findIndex(p => p.id === activePlayers[index].id);
+    } else {
+        dealerIndex = players.findIndex(p => p.active); // primo attivo come default
+    }
 }
 
 function updateDealerAfterRound(){
+    if(dealerIndex === -1) return;
     let next = dealerIndex;
-    do{ next=(next+1)%players.length }while(!players[next].active)
-    dealerIndex=next;
+    do { next = (next+1) % players.length } while(!players[next].active);
+    dealerIndex = next;
 }
 
+// Funzioni principali
 function addRound(){
+    // Se prima mano, chiedi mazziere
+    if(dealerIndex === -1) chooseFirstDealer();
+
     const snapshot={};
     document.querySelectorAll(".score-in").forEach(inp=>{
         const id = inp.dataset.id;
@@ -303,8 +310,8 @@ function addRound(){
     history.push({snapshot,dealerIndex});
     document.querySelectorAll(".score-in").forEach(i=>i.value="");
 
-    if(dealerIndex==-1) chooseFirstDealer();
-    else updateDealerAfterRound();
+    // Passa al prossimo mazziere
+    updateDealerAfterRound();
 
     saveGameToFirebase();
     render();
@@ -396,16 +403,11 @@ function shareResults(){
     else{ navigator.clipboard.writeText(text); alert("Risultati copiati"); }
 }
 
-function resetGame(){
-    if(confirm("Vuoi iniziare una nuova partita?")){
-        db.ref("tables/" + tableName).remove();
-        window.location.href = "index.html";
-    }
-}
-
 function saveGameToFirebase(){
+    const tableId = localStorage.getItem("tableID");
+    if(!tableId) return;
     const gameData = { name: tableName, players, history, limit, winners, dealerIndex };
-    db.ref("tables/" + tableName).set(gameData)
+    db.ref("tables/" + tableId).set(gameData)
       .then(()=>console.log("Dati salvati su Firebase"))
       .catch(err=>console.error("Errore salvataggio Firebase:", err));
 }
