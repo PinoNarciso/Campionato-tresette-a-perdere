@@ -343,8 +343,10 @@ function makeCappotto(winnerId){
     saveGameToFirebase();
     render();
 }
+
+ // Per riattivare linserimento dati inpostarep.active=false
 function checkEliminations(){
-    players.forEach(p=>{ if(p.score>=limit) p.active=false; });
+    players.forEach(p=>{ if(p.score>=limit) p.active=true; });
     if(isGameOver()){ alert("🏁 Partita terminata!"); }
 }
 
