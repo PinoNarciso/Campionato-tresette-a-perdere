@@ -48,7 +48,6 @@ h2 {
     gap: 6px;
 }
 
-/* 🔥 RIGA GIOCATORE PERFETTA */
 .player-row {
     display: flex;
     align-items: center;
@@ -76,6 +75,13 @@ h2 {
     min-width: 25px;
     text-align: right;
     color: #1a73e8;
+}
+
+.hands-history {
+    font-size: 13px;
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid #ccc;
 }
 
 .info {
@@ -154,21 +160,17 @@ const tablesDiv = document.getElementById("tables");
 
 // 🔥 REALTIME TAVOLI
 db.ref("tables").on("value", snap => {
-
     const tables = snap.val() || {};
     tablesDiv.innerHTML = "";
 
     const keys = Object.keys(tables);
-
     if(keys.length === 0){
         tablesDiv.innerHTML = '<p class="empty">Nessun tavolo disponibile.</p>';
         return;
     }
 
     keys.forEach(id => {
-
         const t = tables[id];
-
         const div = document.createElement("div");
         div.className = "table";
 
@@ -177,85 +179,88 @@ db.ref("tables").on("value", snap => {
             <div class="players-list" id="players-${id}">
                 Caricamento giocatori...
             </div>
+            <div class="hands-history" id="hands-${id}">
+                Caricamento storico mani...
+            </div>
             <div class="info">Limite punti: ${t.limit || 0} | Vincitori: ${t.winners || 0}</div>
             <div class="btn-container">
                 <button onclick="enterAdmin('${id}')">Vai al Tavolo come Admin</button>
                 <button onclick="enterVisitor('${id}')">Vai al Tavolo</button>
             </div>
         `;
-
         tablesDiv.appendChild(div);
 
-        // 🔥 REALTIME GIOCATORI
+        // 🔥 REALTIME GIOCATORI E STORICO
         db.ref(`tables/${id}/players`).on("value", snapPlayers => {
-
             const players = snapPlayers.val();
-
             const playersArray = Array.isArray(players) 
                 ? players 
-                : (players && typeof players === "object"
-                    ? Object.values(players)
-                    : []);
-
-            if(playersArray.length === 0){
-                document.getElementById(`players-${id}`).innerHTML =
-                    '<p class="empty">Nessun giocatore</p>';
-                return;
-            }
-
-            const html = playersArray.map((p, i) => {
-
-                let nome = "";
-                let score = 0;
-
-                if(typeof p === "string"){
-                    nome = p;
-                } else if(p){
-                    nome = p.name || "Giocatore";
-                    score = p.score || 0;
-                }
-
-                return `
-                    <div class="player-row">
-                        <span class="player-name">${i + 1}. ${nome}</span>
-                        <span class="dots"></span>
-                        <span class="player-score">${score}</span>
-                    </div>
-                `;
-            }).join("");
+                : (players && typeof players === "object" ? Object.values(players) : []);
 
             const container = document.getElementById(`players-${id}`);
-            if(container){
+            if(playersArray.length === 0){
+                container.innerHTML = '<p class="empty">Nessun giocatore</p>';
+            } else {
+                const html = playersArray.map((p, i) => {
+                    let nome = "", score = 0;
+                    if(typeof p === "string"){ nome = p; } 
+                    else if(p){ nome = p.name || "Giocatore"; score = p.score || 0; }
+                    return `
+                        <div class="player-row">
+                            <span class="player-name">${i + 1}. ${nome}</span>
+                            <span class="dots"></span>
+                            <span class="player-score">${score}</span>
+                        </div>
+                    `;
+                }).join("");
                 container.innerHTML = html;
             }
 
+            // 🔥 MOSTRA LO STORICO DELLE MANI COME TABELLA
+            const handsDiv = document.getElementById(`hands-${id}`);
+            if(playersArray.length === 0){
+                handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
+                return;
+            }
+
+            const maxHands = Math.max(...playersArray.map(p => (p.playerHistory || []).length));
+            if(maxHands === 0){
+                handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
+                return;
+            }
+
+            // Tabella storico
+            let handsHtml = '<table style="width:100%;border-collapse:collapse;text-align:center;font-size:13px;"><thead><tr><th>Mano</th>';
+            playersArray.forEach(p => handsHtml += `<th>${p.name}</th>`);
+            handsHtml += '</tr></thead><tbody>';
+
+            for(let i = 0; i < maxHands; i++){
+                handsHtml += `<tr><td>${i+1}</td>`;
+                playersArray.forEach(p => {
+                    const score = (p.playerHistory && p.playerHistory[i] != null) ? p.playerHistory[i] : "-";
+                    handsHtml += `<td>${score}</td>`;
+                });
+                handsHtml += '</tr>';
+            }
+            handsHtml += '</tbody></table>';
+            handsDiv.innerHTML = handsHtml;
         });
-
     });
-
 });
 
 // ADMIN
 function enterAdmin(id){
     db.ref(`tables/${id}`).once("value").then(snapshot => {
-
         const t = snapshot.val() || {};
-
         const pwdInput = prompt("Inserisci password admin:");
         if(pwdInput === null) return;
-
-        // 🔥 FIX: confronto sicuro
         const passwordDB = String(t.password || "").trim();
         const passwordINSERITA = String(pwdInput).trim();
-
         if(passwordINSERITA === passwordDB){
             localStorage.setItem("tableID", id);
             localStorage.setItem("tableName", t.name || "Tavolo");
             window.location.href = "tresetteaPerdere.html";
-        } else {
-            alert("Password errata!");
-        }
-
+        } else { alert("Password errata!"); }
     });
 }
 
