@@ -15,77 +15,182 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
+/* ==================== STILE GENERALE ==================== */
 body {
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #f0f2f5;
-  padding: 20px;
+  padding: 10px;
+  margin: 0;
+}
+
+.container {
+  display: flex;
+  flex-direction: column; /* colonna unica */
+  gap: 20px;
+  max-width: 550px;
+  margin: 0 auto;
 }
 
 .card {
   background: white;
-  padding: 20px;
+  padding: 15px;
   border-radius: 10px;
-  margin-bottom: 20px;
-  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: left; /* tutto il contenuto allineato a sinistra */
+}
+
+h2, h3 {
+  margin-top: 0;
+  font-size: 1.2em;
+  text-align: left;
+}
+
+input, button {
+  font-size: 1em;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 button {
-  padding: 8px;
-  margin-top: 5px;
+  background: #3498db;
+  color: white;
+  border: none;
   cursor: pointer;
-  width: 100%;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #2980b9;
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
 }
 
 .actions button {
-  width: 50%;
-}
-
-.table {
-  background: #fafafa;
-  padding: 15px;
-  margin-top: 10px;
-  border-radius: 6px;
-  line-height: 1.6;
+  flex: 1 1 48%;
+  margin: 2px 0;
 }
 
 #playersContainer {
-  max-height: 200px;
+  max-height: 250px;
   overflow-y: auto;
   border: 1px solid #ccc;
-  padding: 5px;
+  padding: 8px;
   border-radius: 5px;
 }
-</style>
 
+label {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+}
+
+label input[type="checkbox"] {
+  margin-right: 10px;
+  transform: scale(1.2);
+}
+
+/* ==================== TAVOLI CREATI ==================== */
+.table {
+  background: #ffffff;
+  padding: 12px 15px;
+  margin-top: 15px;
+  border-radius: 10px;
+  line-height: 1.5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  word-break: break-word;
+  text-align: left;
+}
+
+.table b {
+  display: block;
+  font-size: 1.1em;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.players-list {
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.players-list li {
+  font-size: 0.95em;
+  padding: 4px 0;
+  display: flex;
+  justify-content: flex-start; /* numeri e nomi a sinistra */
+  gap: 5px;
+}
+
+.players-list li span.order {
+  font-weight: bold;
+  margin-right: 5px;
+  color: #2c3e50;
+}
+
+.table-info {
+  font-size: 0.9em;
+  color: #555;
+  margin-top: 8px;
+  text-align: left; /* info allineate a sinistra */
+}
+
+@media (max-width: 600px) {
+  .actions button {
+    flex: 1 1 100%;
+  }
+
+  .players-list li {
+    font-size: 0.9em;
+  }
+
+  .table b {
+    font-size: 1em;
+  }
+
+  h2, h3 {
+    font-size: 1.1em;
+  }
+}
+</style>
 </head>
 <body>
 
-<div class="card">
-<h2>Crea / Modifica Tavolo</h2>
+<div class="container">
+  <!-- CREA / MODIFICA TAVOLO -->
+  <div class="card">
+    <h2>Crea / Modifica Tavolo</h2>
 
-<input id="name" value="Tavolo 1" style="width:100%; margin-bottom:10px;">
+    <input id="name" value="Tavolo 1" placeholder="Nome tavolo">
 
-<label>Carica file giocatori (.xlsx):</label>
-<input type="file" id="fileInput" accept=".xlsx" style="margin-bottom:10px;">
+    <label>Carica file giocatori (.xlsx):</label>
+    <input type="file" id="fileInput" accept=".xlsx">
 
-<label>Seleziona giocatori:</label>
-<div id="playersContainer" style="margin-bottom:10px;"></div>
+    <label>Seleziona giocatori:</label>
+    <div id="playersContainer"></div>
 
-<input id="limit" type="number" value="81" style="width:100%; margin-bottom:10px;">
-<input id="winners" type="number" value="3" style="width:100%; margin-bottom:10px;">
-<input id="password" placeholder="Password tavolo" style="width:100%; margin-bottom:10px;">
+    <input id="limit" type="number" value="81" placeholder="Limite punti">
+    <input id="winners" type="number" value="3" placeholder="Numero vincitori">
+    <input id="password" type="password" placeholder="Password tavolo">
 
-<button onclick="saveTable()">Salva Tavolo</button>
-</div>
+    <button onclick="saveTable()">Salva Tavolo</button>
+  </div>
 
-<div class="card">
-<h3>Tavoli creati</h3>
-<div id="tables"></div>
+  <!-- TAVOLI CREATI -->
+  <div class="card">
+    <h3>Tavoli creati</h3>
+    <div id="tables"></div>
+  </div>
 </div>
 
 <script>
@@ -123,13 +228,12 @@ document.getElementById("fileInput").addEventListener("change", function(e){
 
       if(nome){
         const label = document.createElement("label");
-        label.style.display = "block";
-        label.style.padding = "3px 0";
+        label.style.display = "flex";
+        label.style.alignItems = "center";
 
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.value = nome;
-        checkbox.style.marginRight = "8px";
 
         const span = document.createElement("span");
         span.textContent = "";
@@ -173,7 +277,7 @@ function saveTable(){
 
   db.ref("tables/"+id).set({
     name: document.getElementById("name").value || "Tavolo 1",
-    players: selectedOrder.map(p => String(p)), // solo nomi
+    players: selectedOrder.map(p => String(p)),
     limit: Number(document.getElementById("limit").value),
     winners: Number(document.getElementById("winners").value),
     password: document.getElementById("password").value,
@@ -243,22 +347,20 @@ db.ref("tables").on("value", snap => {
 
     const playersList = Array.isArray(t.players)
       ? t.players.map((p,i) => {
-          // Se è un oggetto, prendi solo il nome
-          if(typeof p === "object" && p !== null){
-            return `${i+1}. ${p.name || "Giocatore"}`;
-          } else {
-            return `${i+1}. ${String(p)}`;
-          }
-        }).join("<br>")
-      : String(t.players);
+          let nome = typeof p === "object" && p !== null ? (p.name || "Giocatore") : String(p);
+          return `<li><span class="order">${i+1}.</span> ${nome}</li>`;
+        }).join("")
+      : `<li>${String(t.players)}</li>`;
 
     div.innerHTML += `
       <div class="table">
-        <b>${tableIndex}. ${t.name}</b><br><br>
-        ${playersList}
-        <br><br>
-        Limite punti: ${t.limit} | Vincitori: ${t.winners}
-
+        <b>${tableIndex}. ${t.name}</b>
+        <ul class="players-list">
+          ${playersList}
+        </ul>
+        <div class="table-info">
+          Limite punti: ${t.limit} | Vincitori: ${t.winners}
+        </div>
         <div class="actions">
           <button onclick="editTable('${id}')">✏️ Modifica</button>
           <button onclick="deleteTable('${id}')">❌ Elimina</button>
