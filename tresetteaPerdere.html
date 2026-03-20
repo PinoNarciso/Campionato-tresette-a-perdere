@@ -67,6 +67,11 @@ padding:6px 0;
 border-bottom:1px solid #eee;
 }
 
+.leader{
+background:#fff3cd;
+border-left:4px solid #f39c12;
+}
+
 .sum-check{
 text-align:center;
 font-weight:bold;
@@ -129,11 +134,6 @@ border-radius:6px;
 font-size:0.75rem;
 }
 
-.leader{
-background:#fff3cd;
-border-left:4px solid #f39c12;
-}
-
 .temp-winner{background:#e8f9ee;border-left:4px solid #27ae60;}
 .eliminated{background:#fdf2f2;color:#aaa;text-decoration:line-through;}
 .hidden{display:none}
@@ -185,7 +185,7 @@ const firebaseConfig = {
   authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
   databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "campinato-tresette-a-perdere",
-  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+  storageBucket: "campinato-tresette-a-perdere.firebasedastorage.app",
   messagingSenderId: "105475040052",
   appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
 };
@@ -209,7 +209,6 @@ function start(){
     document.getElementById("displayTableName").innerText = tableName;
     document.getElementById("game").classList.remove("hidden");
 
-    // 🔴 Live listener
     db.ref("tables/" + tableId).on("value", snapshot=>{
         if(snapshot.exists()){
             const data = snapshot.val();
@@ -218,9 +217,7 @@ function start(){
     });
 }
 
-// Carica dati da Firebase
 function loadDataFromFirebase(data){
-    // Giocatori
     players = [];
     if(data.players){
         if(Array.isArray(data.players)){
@@ -252,7 +249,6 @@ function loadDataFromFirebase(data){
     render();
 }
 
-// Render giocatori e ranking
 function render(){
     const area = document.getElementById("inputs-area");
     area.innerHTML="";
@@ -273,7 +269,6 @@ function render(){
     document.getElementById("confirm-btn").disabled = isGameOver();
 }
 
-// Controllo se partita finita
 function isGameOver(){
     return players.filter(p=>p.active).length <= winners;
 }
@@ -373,8 +368,7 @@ function renderRanking(){
             const handNumber=p.playerHistory.length-idx;
             return `<div class="badge-container"><span class="hand-num">${handNumber}</span><span class="badge">${pt}</span></div>`;
         }).join("");
-        const isDealer=(dealerIndex!=-1 && p.id===players[dealerIndex].id)?"leader":"";
-        rank.innerHTML+=`<tr class="${cls} ${isDealer}"><td>${i+1}</td><td>${p.name} ${isDealer?"🃏":""}</td><td><b>${p.score}</b></td><td><div class="history-scroll-cell">${badges||"-"}</div></td></tr>`;
+        rank.innerHTML+=`<tr class="${cls}"><td>${i+1}</td><td>${p.name}</td><td><b>${p.score}</b></td><td><div class="history-scroll-cell">${badges||"-"}</div></td></tr>`;
     });
 }
 
@@ -400,7 +394,6 @@ function saveGameToFirebase(){
       .catch(err=>console.error("Errore salvataggio Firebase:",err));
 }
 
-// Mazziere
 function chooseFirstDealer(){
     let activePlayers = players.filter(p=>p.active);
     let names = activePlayers.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
