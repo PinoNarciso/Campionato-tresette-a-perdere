@@ -79,9 +79,12 @@ h2 {
 
 .hands-history {
     font-size: 13px;
-    margin-top: 6px;
-    padding-top: 4px;
-    border-top: 1px solid #ccc;
+    margin-top: 10px;
+}
+
+.eliminated {
+    text-decoration: line-through;
+    color: #aaa;
 }
 
 .info {
@@ -158,7 +161,6 @@ const db = firebase.database();
 <script>
 const tablesDiv = document.getElementById("tables");
 
-// 🔥 REALTIME TAVOLI
 db.ref("tables").on("value", snap => {
     const tables = snap.val() || {};
     tablesDiv.innerHTML = "";
@@ -190,13 +192,20 @@ db.ref("tables").on("value", snap => {
         `;
         tablesDiv.appendChild(div);
 
-        // 🔥 REALTIME GIOCATORI E STORICO
         db.ref(`tables/${id}/players`).on("value", snapPlayers => {
             const players = snapPlayers.val();
-            const playersArray = Array.isArray(players) 
+            let playersArray = Array.isArray(players) 
                 ? players 
                 : (players && typeof players === "object" ? Object.values(players) : []);
 
+            // Controllo partita finita
+            const gameOver = playersArray.filter(p => (p.score||0) < (t.limit||0)).length <= (t.winners||1);
+            if(gameOver){
+                // Ordina dal punteggio più basso al più alto
+                playersArray.sort((a,b) => (a.score||0) - (b.score||0));
+            }
+
+            // Lista giocatori
             const container = document.getElementById(`players-${id}`);
             if(playersArray.length === 0){
                 container.innerHTML = '<p class="empty">Nessun giocatore</p>';
@@ -205,8 +214,9 @@ db.ref("tables").on("value", snap => {
                     let nome = "", score = 0;
                     if(typeof p === "string"){ nome = p; } 
                     else if(p){ nome = p.name || "Giocatore"; score = p.score || 0; }
+                    const playerClass = (score >= (t.limit || 0)) ? "eliminated" : "";
                     return `
-                        <div class="player-row">
+                        <div class="player-row ${playerClass}">
                             <span class="player-name">${i + 1}. ${nome}</span>
                             <span class="dots"></span>
                             <span class="player-score">${score}</span>
@@ -216,29 +226,28 @@ db.ref("tables").on("value", snap => {
                 container.innerHTML = html;
             }
 
-            // 🔥 MOSTRA LO STORICO DELLE MANI COME TABELLA
+            // Storico mani
             const handsDiv = document.getElementById(`hands-${id}`);
             if(playersArray.length === 0){
                 handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
                 return;
             }
-
             const maxHands = Math.max(...playersArray.map(p => (p.playerHistory || []).length));
             if(maxHands === 0){
                 handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
                 return;
             }
 
-            // Tabella storico
-            let handsHtml = '<table style="width:100%;border-collapse:collapse;text-align:center;font-size:13px;"><thead><tr><th>Mano</th>';
-            playersArray.forEach(p => handsHtml += `<th>${p.name}</th>`);
+            let handsHtml = '<table style="width:100%;border-collapse:collapse;text-align:center;font-size:13px;">';
+            handsHtml += '<thead><tr><th style="border:1px solid #ccc;">Mano</th>';
+            playersArray.forEach(p => handsHtml += `<th style="border:1px solid #ccc;">${p.name}</th>`);
             handsHtml += '</tr></thead><tbody>';
 
             for(let i = 0; i < maxHands; i++){
-                handsHtml += `<tr><td>${i+1}</td>`;
+                handsHtml += `<tr><td style="border:1px solid #ccc;">${i+1}</td>`;
                 playersArray.forEach(p => {
                     const score = (p.playerHistory && p.playerHistory[i] != null) ? p.playerHistory[i] : "-";
-                    handsHtml += `<td>${score}</td>`;
+                    handsHtml += `<td style="border:1px solid #ccc;">${score}</td>`;
                 });
                 handsHtml += '</tr>';
             }
@@ -248,7 +257,6 @@ db.ref("tables").on("value", snap => {
     });
 });
 
-// ADMIN
 function enterAdmin(id){
     db.ref(`tables/${id}`).once("value").then(snapshot => {
         const t = snapshot.val() || {};
@@ -264,7 +272,6 @@ function enterAdmin(id){
     });
 }
 
-// VISITATORE
 function enterVisitor(id){
     db.ref(`tables/${id}`).once("value").then(snapshot => {
         const t = snapshot.val() || {};
