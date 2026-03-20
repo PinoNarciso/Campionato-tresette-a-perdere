@@ -1,8 +1,10 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
 <title>Admin Tavoli Tressette</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="style.css">
 
@@ -16,11 +18,17 @@
 
 <style>
 /* ==================== STILE GENERALE ==================== */
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: Arial, sans-serif;
   background: #f0f2f5;
   padding: 10px;
   margin: 0;
+  width: 100%;
+  overflow-x: hidden; /* evita scroll orizzontale */
 }
 
 .container {
@@ -28,6 +36,7 @@ body {
   flex-direction: column; /* colonna unica */
   gap: 20px;
   max-width: 550px;
+  width: 95%; /* più fluido su smartphone */
   margin: 0 auto;
 }
 
@@ -53,7 +62,6 @@ input, button {
   border-radius: 5px;
   border: 1px solid #ccc;
   width: 100%;
-  box-sizing: border-box;
 }
 
 button {
@@ -85,6 +93,7 @@ button:hover {
   border: 1px solid #ccc;
   padding: 8px;
   border-radius: 5px;
+  word-break: break-word; /* evita overflow testi lunghi */
 }
 
 label {
@@ -142,24 +151,25 @@ label input[type="checkbox"] {
   font-size: 0.9em;
   color: #555;
   margin-top: 8px;
-  text-align: left; /* info allineate a sinistra */
+  text-align: left;
 }
 
+/* ==================== MEDIA QUERY ==================== */
 @media (max-width: 600px) {
-  .actions button {
-    flex: 1 1 100%;
+  .container {
+    width: 95%;
   }
-
-  .players-list li {
-    font-size: 0.9em;
+  h2, h3 {
+    font-size: 1.1em;
   }
-
   .table b {
     font-size: 1em;
   }
-
-  h2, h3 {
-    font-size: 1.1em;
+  .players-list li {
+    font-size: 0.9em;
+  }
+  .actions button {
+    flex: 1 1 100%;
   }
 }
 </style>
