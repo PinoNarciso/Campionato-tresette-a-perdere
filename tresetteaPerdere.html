@@ -256,7 +256,7 @@ function render(){
         const isDealer=(dealerIndex!=-1 && players[dealerIndex].id===p.id)?"leader":"";
         area.innerHTML+=`
         <div class="player-row ${isDealer}">
-            <span>${p.name} ${isDealer?"🃏":""}</span>
+            <span>${p.name} ${isDealer?"★":""}</span>
             <div style="display:flex;gap:4px">
                 <input type="number" class="score-in" data-id="${p.id}" min="0" max="21" style="width:50px" oninput="checkSum()" ${isGameOver()? "disabled": ""}>
                 <button class="btn-rete" onclick="fillRete(${p.id})" ${isGameOver()? "disabled": ""}>RETE</button>
