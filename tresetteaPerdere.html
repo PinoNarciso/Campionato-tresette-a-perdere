@@ -129,7 +129,11 @@ border-radius:6px;
 font-size:0.75rem;
 }
 
-.leader{background:#e8f8f5;}
+.leader{
+background:#fff3cd;
+border-left:4px solid #f39c12;
+}
+
 .temp-winner{background:#e8f9ee;border-left:4px solid #27ae60;}
 .eliminated{background:#fdf2f2;color:#aaa;text-decoration:line-through;}
 .hidden{display:none}
@@ -142,7 +146,6 @@ margin:20px 0;
 }
 </style>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
@@ -191,7 +194,6 @@ const db = firebase.database();
 
 let players=[], history=[], limit=81, tableName="", winners=1, dealerIndex=-1;
 
-// Avvio automatico della partita con tableID da localStorage
 window.onload = function(){ start(); }
 
 function start(){
@@ -199,110 +201,93 @@ function start(){
     tableName = localStorage.getItem("tableName");
 
     if(!tableId || !tableName){
-        alert("ID o nome tavolo non trovato. Ritorna alla pagina principale.");
+        alert("ID o nome tavolo non trovato.");
         window.location.href = "index.html";
         return;
     }
 
-    db.ref("tables/" + tableId).get().then(snapshot=>{
+    document.getElementById("displayTableName").innerText = tableName;
+    document.getElementById("game").classList.remove("hidden");
+
+    // 🔴 Live listener
+    db.ref("tables/" + tableId).on("value", snapshot=>{
         if(snapshot.exists()){
             const data = snapshot.val();
-
-            // Carica i giocatori
-            players = [];
-            if(data.players){
-                if(Array.isArray(data.players)){
-                    players = data.players.map((p,i)=>({
-                        id: i,
-                        name: p.name || p,
-                        score: p.score || 0,
-                        active: p.active !== undefined ? p.active : true,
-                        playerHistory: p.playerHistory || []
-                    }));
-                } else {
-                    players = Object.keys(data.players).map((key, i)=>{
-                        const p = data.players[key];
-                        return {
-                            id: i,
-                            name: p.name || p,
-                            score: p.score || 0,
-                            active: p.active !== undefined ? p.active : true,
-                            playerHistory: p.playerHistory || []
-                        };
-                    });
-                }
-            }
-
-            history = data.history || [];
-            limit = data.limit || 81;
-            winners = data.winners || 1;
-            dealerIndex = data.dealerIndex ?? -1;
-
-            document.getElementById("displayTableName").innerText = tableName;
-            document.getElementById("game").classList.remove("hidden");
-
-            render();
-        } else {
-            alert("Tavolo non trovato!");
-            window.location.href = "index.html";
+            loadDataFromFirebase(data);
         }
-    }).catch(err=>console.error("Errore caricamento Firebase:", err));
+    });
 }
 
-// Render giocatori
+// Carica dati da Firebase
+function loadDataFromFirebase(data){
+    // Giocatori
+    players = [];
+    if(data.players){
+        if(Array.isArray(data.players)){
+            players = data.players.map((p,i)=>({
+                id:i,
+                name:p.name || p,
+                score:p.score || 0,
+                active:p.active !== undefined ? p.active : true,
+                playerHistory:p.playerHistory || []
+            }));
+        } else {
+            players = Object.keys(data.players).map((key,i)=>{
+                const p = data.players[key];
+                return {
+                    id:i,
+                    name:p.name || p,
+                    score:p.score || 0,
+                    active:p.active !== undefined ? p.active : true,
+                    playerHistory:p.playerHistory || []
+                };
+            });
+        }
+    }
+    history = data.history || [];
+    limit = data.limit || 81;
+    winners = data.winners || 1;
+    dealerIndex = data.dealerIndex ?? -1;
+
+    render();
+}
+
+// Render giocatori e ranking
 function render(){
     const area = document.getElementById("inputs-area");
     area.innerHTML="";
     players.filter(p=>p.active).forEach(p=>{
-        const isDealer=(dealerIndex!=-1 && players[dealerIndex].id==p.id)?"leader":"";
+        const isDealer=(dealerIndex!=-1 && players[dealerIndex].id===p.id)?"leader":"";
         area.innerHTML+=`
         <div class="player-row ${isDealer}">
             <span>${p.name} ${isDealer?"🃏":""}</span>
             <div style="display:flex;gap:4px">
-                <input type="number" class="score-in" data-id="${p.id}" min="0" max="21" style="width:50px" oninput="checkSum()">
-                <button class="btn-rete" onclick="fillRete(${p.id})">RETE</button>
-                <button class="btn-cap" onclick="makeCappotto(${p.id})">CAP</button>
+                <input type="number" class="score-in" data-id="${p.id}" min="0" max="21" style="width:50px" oninput="checkSum()" ${isGameOver()? "disabled": ""}>
+                <button class="btn-rete" onclick="fillRete(${p.id})" ${isGameOver()? "disabled": ""}>RETE</button>
+                <button class="btn-cap" onclick="makeCappotto(${p.id})" ${isGameOver()? "disabled": ""}>CAP</button>
             </div>
         </div>`;
     });
     renderRanking();
     checkSum();
+    document.getElementById("confirm-btn").disabled = isGameOver();
 }
 
-// Funzioni mazziere
-function chooseFirstDealer(){
-    let activePlayers = players.filter(p=>p.active);
-    let names = activePlayers.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
-    
-    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n" + names);
-    let index = parseInt(choice)-1;
-
-    if(index>=0 && index<activePlayers.length){
-        dealerIndex = players.findIndex(p => p.id === activePlayers[index].id);
-    } else {
-        dealerIndex = players.findIndex(p => p.active); // primo attivo come default
-    }
+// Controllo se partita finita
+function isGameOver(){
+    return players.filter(p=>p.active).length <= winners;
 }
 
-function updateDealerAfterRound(){
-    if(dealerIndex === -1) return;
-    let next = dealerIndex;
-    do { next = (next+1) % players.length } while(!players[next].active);
-    dealerIndex = next;
-}
-
-// Funzioni principali
 function addRound(){
-    // Se prima mano, chiedi mazziere
-    if(dealerIndex === -1) chooseFirstDealer();
+    if(dealerIndex===-1) chooseFirstDealer();
 
     const snapshot={};
     document.querySelectorAll(".score-in").forEach(inp=>{
-        const id = inp.dataset.id;
-        const val = parseInt(inp.value||0);
-        const p = players.find(pl=>pl.id==id);
+        const id=parseInt(inp.dataset.id);
+        const val=parseInt(inp.value||0);
+        const p=players.find(pl=>pl.id===id);
         snapshot[id]={prevScore:p.score,prevActive:p.active};
-        p.score += val;
+        p.score+=val;
         p.playerHistory.push(val);
     });
 
@@ -310,9 +295,7 @@ function addRound(){
     history.push({snapshot,dealerIndex});
     document.querySelectorAll(".score-in").forEach(i=>i.value="");
 
-    // Passa al prossimo mazziere
     updateDealerAfterRound();
-
     saveGameToFirebase();
     render();
 }
@@ -323,29 +306,30 @@ function checkSum(){
     const display=document.getElementById("sum-display");
     const btn=document.getElementById("confirm-btn");
     display.innerText=`Somma: ${sum} / 21`;
-    if(sum==21){ btn.disabled=false; btn.classList.add("ready"); display.className="sum-check sum-ok";}
+    if(sum==21 && !isGameOver()){ btn.disabled=false; btn.classList.add("ready"); display.className="sum-check sum-ok";}
     else{ btn.disabled=true; btn.classList.remove("ready"); display.className="sum-check sum-err";}
 }
 
 function fillRete(targetId){
+    if(isGameOver()) return;
     let total=0,target=null;
     document.querySelectorAll(".score-in").forEach(inp=>{
         const val=parseInt(inp.value);
-        if(parseInt(inp.dataset.id)==targetId) target=inp;
+        if(parseInt(inp.dataset.id)===targetId) target=inp;
         else total+=isNaN(val)?0:val;
     });
-    let diff=Math.min(Math.max(21-total,0),21);
-    if(target) target.value=diff;
+    if(target){ target.value=Math.min(Math.max(21-total,0),21); }
     checkSum();
 }
 
 function makeCappotto(winnerId){
+    if(isGameOver()) return;
     if(!confirm("Confermi Cappotto?")) return;
     const snapshot={};
     players.forEach(p=>{
         if(p.active){
             snapshot[p.id]={prevScore:p.score,prevActive:p.active};
-            const pts=p.id==winnerId?0:21;
+            const pts=p.id===winnerId?0:21;
             p.score+=pts;
             p.playerHistory.push(pts);
         }
@@ -358,21 +342,20 @@ function makeCappotto(winnerId){
 }
 
 function checkEliminations(){
-    players.forEach(p=>{ if(p.score>=limit) p.active=false });
-    const activeCount = players.filter(p=>p.active).length;
-    if(activeCount <= winners) alert("Partita terminata!");
+    players.forEach(p=>{ if(p.score>=limit) p.active=false; });
+    if(isGameOver()){ alert("🏁 Partita terminata!"); }
 }
 
 function undoLast(){
     if(!history.length) return;
-    const last = history.pop();
+    const last=history.pop();
     for(let id in last.snapshot){
-        const p = players.find(pl=>pl.id==id);
-        p.score = last.snapshot[id].prevScore;
-        p.active = last.snapshot[id].prevActive;
+        const p=players.find(pl=>pl.id===parseInt(id));
+        p.score=last.snapshot[id].prevScore;
+        p.active=last.snapshot[id].prevActive;
         p.playerHistory.pop();
     }
-    dealerIndex = last.dealerIndex;
+    dealerIndex=last.dealerIndex;
     saveGameToFirebase();
     render();
 }
@@ -390,7 +373,7 @@ function renderRanking(){
             const handNumber=p.playerHistory.length-idx;
             return `<div class="badge-container"><span class="hand-num">${handNumber}</span><span class="badge">${pt}</span></div>`;
         }).join("");
-        const isDealer=(dealerIndex!=-1 && p.id==players[dealerIndex].id)?"leader":"";
+        const isDealer=(dealerIndex!=-1 && p.id===players[dealerIndex].id)?"leader":"";
         rank.innerHTML+=`<tr class="${cls} ${isDealer}"><td>${i+1}</td><td>${p.name} ${isDealer?"🃏":""}</td><td><b>${p.score}</b></td><td><div class="history-scroll-cell">${badges||"-"}</div></td></tr>`;
     });
 }
@@ -404,12 +387,33 @@ function shareResults(){
 }
 
 function saveGameToFirebase(){
-    const tableId = localStorage.getItem("tableID");
+    const tableId=localStorage.getItem("tableID");
     if(!tableId) return;
-    const gameData = { name: tableName, players, history, limit, winners, dealerIndex };
-    db.ref("tables/" + tableId).set(gameData)
+    const gameData={
+        name:tableName,
+        players:players.map(p=>({id:p.id,name:p.name,score:p.score,active:p.active,playerHistory:[...p.playerHistory]})),
+        history:history.map(h=>({snapshot:h.snapshot,dealerIndex:h.dealerIndex})),
+        limit,winners,dealerIndex
+    };
+    db.ref("tables/"+tableId).update(gameData)
       .then(()=>console.log("Dati salvati su Firebase"))
-      .catch(err=>console.error("Errore salvataggio Firebase:", err));
+      .catch(err=>console.error("Errore salvataggio Firebase:",err));
+}
+
+// Mazziere
+function chooseFirstDealer(){
+    let activePlayers = players.filter(p=>p.active);
+    let names = activePlayers.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
+    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n"+names);
+    let index=parseInt(choice)-1;
+    dealerIndex=(index>=0 && index<activePlayers.length)?players.findIndex(p=>p.id===activePlayers[index].id):players.findIndex(p=>p.active);
+}
+
+function updateDealerAfterRound(){
+    if(dealerIndex===-1) return;
+    let next=dealerIndex;
+    do{ next=(next+1)%players.length } while(!players[next].active);
+    dealerIndex=next;
 }
 </script>
 

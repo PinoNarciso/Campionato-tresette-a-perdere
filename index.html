@@ -6,60 +6,110 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-.card { background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-h2 { text-align: center; color: #1a73e8; margin-top: 0; }
-.table { background: #f8f9fa; padding: 10px 15px; margin: 10px 0; border-radius: 8px; }
-.table b { color: #333; }
-
-.players-list {
-    margin: 5px 0;
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    padding: 20px;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    justify-content: center;
 }
 
-/* 🔥 RIGA GIOCATORE CON PUNTINI */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h2 {
+    text-align: center;
+    color: #1a73e8;
+    margin-top: 0;
+}
+
+.table {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    margin: 12px 0;
+    border-radius: 8px;
+}
+
+.table b {
+    color: #333;
+    font-size: 16px;
+}
+
+.players-list {
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 🔥 RIGA GIOCATORE PERFETTA */
 .player-row {
     display: flex;
     align-items: center;
     font-size: 14px;
     color: #444;
+    width: 100%;
 }
 
 .player-name {
     white-space: nowrap;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .dots {
     flex: 1;
-    border-bottom: 1px dotted #999;
-    margin: 0 6px;
-    height: 10px;
+    border-bottom: 2px dotted #bbb;
+    margin: 0 8px;
+    height: 0;
 }
 
 .player-score {
     font-weight: bold;
-    min-width: 20px;
+    min-width: 25px;
     text-align: right;
+    color: #1a73e8;
 }
 
-.info { font-size: 13px; color: #666; margin-top: 5px; }
-.btn-container { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
+.info {
+    font-size: 13px;
+    color: #666;
+    margin-top: 6px;
+}
+
+.btn-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
 
 button {
-    padding: 6px 12px;
+    padding: 7px 12px;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     background: #1a73e8;
     color: white;
     cursor: pointer;
-    transition: 0.3s;
+    transition: 0.2s;
 }
 
-button:hover { background: #1557b0; }
+button:hover {
+    background: #1557b0;
+}
 
-p.empty { color:#999; text-align:center; margin:20px 0; }
+p.empty {
+    color:#999;
+    text-align:center;
+    margin:20px 0;
+}
 
 /* Mobile */
 @media(max-width: 500px){
@@ -123,7 +173,7 @@ db.ref("tables").on("value", snap => {
         div.className = "table";
 
         div.innerHTML = `
-            <b>${t.name}</b>
+            <b>${t.name || "Tavolo"}</b>
             <div class="players-list" id="players-${id}">
                 Caricamento giocatori...
             </div>
@@ -136,7 +186,7 @@ db.ref("tables").on("value", snap => {
 
         tablesDiv.appendChild(div);
 
-        // 🔥 REALTIME GIOCATORI + PUNTEGGI
+        // 🔥 REALTIME GIOCATORI
         db.ref(`tables/${id}/players`).on("value", snapPlayers => {
 
             const players = snapPlayers.val();
@@ -147,6 +197,12 @@ db.ref("tables").on("value", snap => {
                     ? Object.values(players)
                     : []);
 
+            if(playersArray.length === 0){
+                document.getElementById(`players-${id}`).innerHTML =
+                    '<p class="empty">Nessun giocatore</p>';
+                return;
+            }
+
             const html = playersArray.map((p, i) => {
 
                 let nome = "";
@@ -154,7 +210,7 @@ db.ref("tables").on("value", snap => {
 
                 if(typeof p === "string"){
                     nome = p;
-                } else {
+                } else if(p){
                     nome = p.name || "Giocatore";
                     score = p.score || 0;
                 }
@@ -182,17 +238,24 @@ db.ref("tables").on("value", snap => {
 // ADMIN
 function enterAdmin(id){
     db.ref(`tables/${id}`).once("value").then(snapshot => {
+
         const t = snapshot.val() || {};
+
         const pwdInput = prompt("Inserisci password admin:");
         if(pwdInput === null) return;
 
-        if(pwdInput.trim() === (t.password || "")){
+        // 🔥 FIX: confronto sicuro
+        const passwordDB = String(t.password || "").trim();
+        const passwordINSERITA = String(pwdInput).trim();
+
+        if(passwordINSERITA === passwordDB){
             localStorage.setItem("tableID", id);
             localStorage.setItem("tableName", t.name || "Tavolo");
             window.location.href = "tresetteaPerdere.html";
         } else {
             alert("Password errata!");
         }
+
     });
 }
 
