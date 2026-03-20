@@ -186,14 +186,15 @@ margin:20px 0;
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "...",
-  databaseURL: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
+  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "campinato-tresette-a-perdere",
+  storageBucket: "campinato-tresette-a-perdere.firebasedastorage.app",
+  messagingSenderId: "105475040052",
+  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -224,13 +225,15 @@ function start(){
 function loadDataFromFirebase(data){
     players = [];
     if(data.players){
-        players = data.players.map((p,i)=>({
-            id:i,
-            name:p.name || p,
-            score:p.score || 0,
-            active:p.active !== false,
-            playerHistory:p.playerHistory || []
-        }));
+        if(Array.isArray(data.players)){
+            players = data.players.map((p,i)=>({
+                id:i,
+                name:p.name || p,
+                score:p.score || 0,
+                active:p.active !== false,
+                playerHistory:p.playerHistory || []
+            }));
+        }
     }
     history = data.history || [];
     limit = data.limit || 81;
@@ -265,7 +268,6 @@ function render(){
 
     document.getElementById("confirm-btn").disabled = gameOver;
 
-    // 🔴 DISATTIVA TUTTI I PULSANTI TRANNE SHARE
     document.querySelectorAll("button").forEach(btn=>{
         if(!btn.classList.contains("btn-share")){
             btn.disabled = gameOver;
@@ -277,22 +279,86 @@ function isGameOver(){
     return players.filter(p=>p.active).length <= winners;
 }
 
-// 🔒 BLOCCO FUNZIONI
 function addRound(){
     if(isGameOver()) return;
+
+    if(dealerIndex===-1) chooseFirstDealer();
+
+    const snapshot={};
+    document.querySelectorAll(".score-in").forEach(inp=>{
+        const id=parseInt(inp.dataset.id);
+        const val=parseInt(inp.value||0);
+        const p=players.find(pl=>pl.id===id);
+        snapshot[id]={prevScore:p.score,prevActive:p.active};
+        p.score+=val;
+        p.playerHistory.push(val);
+    });
+
+    checkEliminations();
+    history.push({snapshot,dealerIndex});
+    document.querySelectorAll(".score-in").forEach(i=>i.value="");
+
+    updateDealerAfterRound();
+    saveGameToFirebase();
+    render();
 }
 
-function fillRete(){
+function fillRete(targetId){
     if(isGameOver()) return;
+
+    let total=0,target=null;
+    document.querySelectorAll(".score-in").forEach(inp=>{
+        const val=parseInt(inp.value);
+        if(parseInt(inp.dataset.id)===targetId) target=inp;
+        else total+=isNaN(val)?0:val;
+    });
+
+    if(target){ target.value=Math.min(Math.max(21-total,0),21); }
+    checkSum();
 }
 
-function makeCappotto(){
+function makeCappotto(winnerId){
     if(isGameOver()) return;
+
+    if(dealerIndex === -1) chooseFirstDealer();
+    if(!confirm("Confermi Cappotto?")) return;
+
+    const snapshot = {};
+    players.forEach(p => {
+        if(p.active){
+            snapshot[p.id] = {prevScore: p.score, prevActive: p.active};
+            const pts = (p.id === winnerId) ? 0 : 21;
+            p.score += pts;
+            p.playerHistory.push(pts);
+        }
+    });
+
+    checkEliminations();
+    history.push({snapshot, dealerIndex});
+    updateDealerAfterRound();
+    saveGameToFirebase();
+    render();
 }
 
 function undoLast(){
     if(isGameOver()) return;
     if(!confirm("Sei sicuro di voler annullare l'ultima mano?")) return;
+
+    const last = history.pop();
+    for(let id in last.snapshot){
+        const p = players.find(pl => pl.id === parseInt(id));
+        p.score = last.snapshot[id].prevScore;
+        p.active = last.snapshot[id].prevActive;
+        p.playerHistory.pop();
+    }
+    dealerIndex = last.dealerIndex;
+    saveGameToFirebase();
+    render();
+}
+
+function checkEliminations(){
+    players.forEach(p=>{ if(p.score>=limit) p.active=false; });
+    if(isGameOver()){ alert("🏁 Partita terminata!"); }
 }
 
 function checkSum(){
@@ -314,6 +380,56 @@ function checkSum(){
         btn.classList.remove("ready");
         display.className="sum-check sum-err";
     }
+}
+
+function chooseFirstDealer(){
+    let activePlayers = players.filter(p=>p.active);
+    let names = activePlayers.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
+    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n"+names);
+    let index=parseInt(choice)-1;
+    dealerIndex=(index>=0 && index<activePlayers.length)
+        ? players.findIndex(p=>p.id===activePlayers[index].id)
+        : players.findIndex(p=>p.active);
+}
+
+function updateDealerAfterRound(){
+    if(dealerIndex===-1) return;
+    let next=dealerIndex;
+    do{ next=(next+1)%players.length } while(!players[next].active);
+    dealerIndex=next;
+}
+
+function saveGameToFirebase(){
+    const tableId=localStorage.getItem("tableID");
+    if(!tableId) return;
+
+    const gameData={
+        name:tableName,
+        players:players.map(p=>({
+            id:p.id,
+            name:p.name,
+            score:p.score,
+            active:p.active,
+            playerHistory:[...p.playerHistory]
+        })),
+        history:history,
+        limit,winners,dealerIndex
+    };
+
+    db.ref("tables/"+tableId).update(gameData);
+}
+
+function shareResults(){
+    let text = `🏆 TRESSETTE A PERDERE - ${tableName}\n\n`;
+    const sorted=[...players].sort((a,b)=>a.score-b.score);
+
+    sorted.forEach((p,i)=>{
+        text+=`${i+1}. ${p.name} - ${p.score}\n`;
+    });
+
+    navigator.share
+        ? navigator.share({title:"Risultati",text})
+        : navigator.clipboard.writeText(text);
 }
 </script>
 
