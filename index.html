@@ -80,6 +80,20 @@ h2 {
 .hands-history {
     font-size: 13px;
     margin-top: 10px;
+    overflow-x: auto;   /* scroll orizzontale */
+}
+
+.hands-history table {
+    width: 100%;
+    min-width: 300px;  /* evita di diventare troppo piccola */
+    border-collapse: collapse;
+}
+
+.hands-history th, .hands-history td {
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    text-align: center;
+    font-size: 12px;   /* più leggibile su mobile */
 }
 
 .eliminated {
@@ -238,20 +252,20 @@ db.ref("tables").on("value", snap => {
                 return;
             }
 
-            let handsHtml = '<table style="width:100%;border-collapse:collapse;text-align:center;font-size:13px;">';
-            handsHtml += '<thead><tr><th style="border:1px solid #ccc;">Mano</th>';
-            playersArray.forEach(p => handsHtml += `<th style="border:1px solid #ccc;">${p.name}</th>`);
+            let handsHtml = '<div style="overflow-x:auto;"><table>';
+            handsHtml += '<thead><tr><th>Mano</th>';
+            playersArray.forEach(p => handsHtml += `<th>${p.name}</th>`);
             handsHtml += '</tr></thead><tbody>';
 
             for(let i = 0; i < maxHands; i++){
-                handsHtml += `<tr><td style="border:1px solid #ccc;">${i+1}</td>`;
+                handsHtml += `<tr><td>${i+1}</td>`;
                 playersArray.forEach(p => {
                     const score = (p.playerHistory && p.playerHistory[i] != null) ? p.playerHistory[i] : "-";
-                    handsHtml += `<td style="border:1px solid #ccc;">${score}</td>`;
+                    handsHtml += `<td>${score}</td>`;
                 });
                 handsHtml += '</tr>';
             }
-            handsHtml += '</tbody></table>';
+            handsHtml += '</tbody></table></div>';
             handsDiv.innerHTML = handsHtml;
         });
     });
