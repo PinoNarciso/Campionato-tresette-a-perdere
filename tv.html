@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Campionato Tressette a Perdere</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f0f2f5;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+}
+
+h2 {
+    text-align: center;
+    color: #1a73e8;
+    margin-top: 0;
+}
+
+/* Contenitore griglia tavoli */
+.tables-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    width: 100%;
+}
+
+/* Tavolo individuale */
+.table {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: 8px;
+}
+
+.table b {
+    color: #333;
+    font-size: 16px;
+}
+
+.players-list {
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.player-row {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #444;
+    width: 100%;
+}
+
+.player-name {
+    white-space: nowrap;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dots {
+    flex: 1;
+    border-bottom: 2px dotted #bbb;
+    margin: 0 8px;
+    height: 0;
+}
+
+.player-score {
+    font-weight: bold;
+    min-width: 25px;
+    text-align: right;
+    color: #1a73e8;
+}
+
+.hands-history {
+    font-size: 13px;
+    margin-top: 10px;
+    overflow-x: auto;
+}
+
+.hands-history table {
+    width: 100%;
+    min-width: 300px;
+    border-collapse: collapse;
+}
+
+.hands-history th, .hands-history td {
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    text-align: center;
+    font-size: 12px;
+}
+
+.eliminated {
+    text-decoration: line-through;
+    color: #aaa;
+}
+
+.info {
+    font-size: 13px;
+    color: #666;
+    margin-top: 6px;
+}
+
+p.empty {
+    color:#999;
+    text-align:center;
+    margin:20px 0;
+}
+
+/* Mobile responsiveness */
+@media(max-width: 1200px){
+    .tables-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media(max-width: 800px){
+    .tables-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "campinato-tresette-a-perdere",
+  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+  messagingSenderId: "105475040052",
+  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
+</script>
+
+</head>
+<body>
+
+<div class="card">
+    <h2>Tavoli disponibili</h2>
+    <div id="tables" class="tables-grid">
+        <p class="empty">Caricamento tavoli...</p>
+    </div>
+</div>
+
+<script>
+const tablesDiv = document.getElementById("tables");
+
+db.ref("tables").on("value", snap => {
+    const tables = snap.val() || {};
+    tablesDiv.innerHTML = "";
+
+    const keys = Object.keys(tables);
+    if(keys.length === 0){
+        tablesDiv.innerHTML = '<p class="empty">Nessun tavolo disponibile.</p>';
+        return;
+    }
+
+    keys.forEach(id => {
+        const t = tables[id];
+        const div = document.createElement("div");
+        div.className = "table";
+
+        div.innerHTML = `
+            <b>${t.name || "Tavolo"}</b>
+            <div class="players-list" id="players-${id}">
+                Caricamento giocatori...
+            </div>
+            <div class="hands-history" id="hands-${id}">
+                Caricamento storico mani...
+            </div>
+            <div class="info">Limite punti: ${t.limit || 0} | Vincitori: ${t.winners || 0}</div>
+        `;
+        tablesDiv.appendChild(div);
+
+        db.ref(`tables/${id}/players`).on("value", snapPlayers => {
+            const players = snapPlayers.val();
+            let playersArray = Array.isArray(players) 
+                ? players 
+                : (players && typeof players === "object" ? Object.values(players) : []);
+
+            const gameOver = playersArray.filter(p => (p.score||0) < (t.limit||0)).length <= (t.winners||1);
+            if(gameOver){
+                playersArray.sort((a,b) => (a.score||0) - (b.score||0));
+            }
+
+            const container = document.getElementById(`players-${id}`);
+            if(playersArray.length === 0){
+                container.innerHTML = '<p class="empty">Nessun giocatore</p>';
+            } else {
+                const html = playersArray.map((p, i) => {
+                    let nome = "", score = 0;
+                    if(typeof p === "string"){ nome = p; } 
+                    else if(p){ nome = p.name || "Giocatore"; score = p.score || 0; }
+                    const playerClass = (score >= (t.limit || 0)) ? "eliminated" : "";
+                    return `
+                        <div class="player-row ${playerClass}">
+                            <span class="player-name">${i + 1}. ${nome}</span>
+                            <span class="dots"></span>
+                            <span class="player-score">${score}</span>
+                        </div>
+                    `;
+                }).join("");
+                container.innerHTML = html;
+            }
+
+            const handsDiv = document.getElementById(`hands-${id}`);
+            if(playersArray.length === 0){
+                handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
+                return;
+            }
+            const maxHands = Math.max(...playersArray.map(p => (p.playerHistory || []).length));
+            if(maxHands === 0){
+                handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
+                return;
+            }
+
+            let handsHtml = '<div style="overflow-x:auto;"><table>';
+            handsHtml += '<thead><tr><th>Mano</th>';
+            playersArray.forEach(p => handsHtml += `<th>${p.name}</th>`);
+            handsHtml += '</tr></thead><tbody>';
+
+            for(let i = 0; i < maxHands; i++){
+                handsHtml += `<tr><td>${i+1}</td>`;
+                playersArray.forEach(p => {
+                    const score = (p.playerHistory && p.playerHistory[i] != null) ? p.playerHistory[i] : "-";
+                    handsHtml += `<td>${score}</td>`;
+                });
+                handsHtml += '</tr>';
+            }
+            handsHtml += '</tbody></table></div>';
+            handsDiv.innerHTML = handsHtml;
+        });
+    });
+});
+</script>
+
+</body>
+</html>
