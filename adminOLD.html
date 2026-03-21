@@ -1,0 +1,387 @@
+<<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Admin Tavoli Tressette</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="style.css">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="firebase.js"></script>
+
+<!-- Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+/* ==================== STILE GENERALE ==================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f2f5;
+  padding: 10px;
+  margin: 0;
+  width: 100%;
+  overflow-x: hidden; /* evita scroll orizzontale */
+}
+
+.container {
+  display: flex;
+  flex-direction: column; /* colonna unica */
+  gap: 20px;
+  max-width: 550px;
+  width: 95%; /* più fluido su smartphone */
+  margin: 0 auto;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: left; /* tutto il contenuto allineato a sinistra */
+}
+
+h2, h3 {
+  margin-top: 0;
+  font-size: 1.2em;
+  text-align: left;
+}
+
+input, button {
+  font-size: 1em;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+
+button {
+  background: #3498db;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.actions button {
+  flex: 1 1 48%;
+  margin: 2px 0;
+}
+
+#playersContainer {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 8px;
+  border-radius: 5px;
+  word-break: break-word; /* evita overflow testi lunghi */
+}
+
+label {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+}
+
+label input[type="checkbox"] {
+  margin-right: 10px;
+  transform: scale(1.2);
+}
+
+/* ==================== TAVOLI CREATI ==================== */
+.table {
+  background: #ffffff;
+  padding: 12px 15px;
+  margin-top: 15px;
+  border-radius: 10px;
+  line-height: 1.5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  word-break: break-word;
+  text-align: left;
+}
+
+.table b {
+  display: block;
+  font-size: 1.1em;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.players-list {
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.players-list li {
+  font-size: 0.95em;
+  padding: 4px 0;
+  display: flex;
+  justify-content: flex-start; /* numeri e nomi a sinistra */
+  gap: 5px;
+}
+
+.players-list li span.order {
+  font-weight: bold;
+  margin-right: 5px;
+  color: #2c3e50;
+}
+
+.table-info {
+  font-size: 0.9em;
+  color: #555;
+  margin-top: 8px;
+  text-align: left;
+}
+
+/* ==================== MEDIA QUERY ==================== */
+@media (max-width: 600px) {
+  .container {
+    width: 95%;
+  }
+  h2, h3 {
+    font-size: 1.1em;
+  }
+  .table b {
+    font-size: 1em;
+  }
+  .players-list li {
+    font-size: 0.9em;
+  }
+  .actions button {
+    flex: 1 1 100%;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- CREA / MODIFICA TAVOLO -->
+  <div class="card">
+    <h2>Crea / Modifica Tavolo</h2>
+
+    <input id="name" value="Tavolo 1" placeholder="Nome tavolo">
+
+    <label>Carica file giocatori (.xlsx):</label>
+    <input type="file" id="fileInput" accept=".xlsx">
+
+    <label>Seleziona giocatori:</label>
+    <div id="playersContainer"></div>
+
+    <input id="limit" type="number" value="81" placeholder="Limite punti">
+    <input id="winners" type="number" value="3" placeholder="Numero vincitori">
+    <input id="password" type="password" placeholder="Password tavolo">
+
+    <button onclick="saveTable()">Salva Tavolo</button>
+  </div>
+
+  <!-- TAVOLI CREATI -->
+  <div class="card">
+    <h3>Tavoli creati</h3>
+    <div id="tables"></div>
+  </div>
+</div>
+
+<script>
+// ==================== VARIABILI GLOBALI ====================
+let editingId = null;
+let selectedOrder = [];
+const playersContainer = document.getElementById("playersContainer");
+
+// ==================== CARICAMENTO GIOCATORI DA EXCEL ====================
+document.getElementById("fileInput").addEventListener("change", function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function(evt){
+    const data = new Uint8Array(evt.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    playersContainer.innerHTML = "";
+    selectedOrder = [];
+
+    json.forEach(row => {
+      let nome = null;
+      if(row.Giocatore){
+        if(typeof row.Giocatore === "object" && row.Giocatore.v){
+          nome = String(row.Giocatore.v);
+        } else {
+          nome = String(row.Giocatore);
+        }
+      }
+
+      if(nome){
+        const label = document.createElement("label");
+        label.style.display = "flex";
+        label.style.alignItems = "center";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = nome;
+
+        const span = document.createElement("span");
+        span.textContent = "";
+
+        checkbox.addEventListener("change", function(){
+          if(this.checked){
+            selectedOrder.push(this.value);
+          } else {
+            selectedOrder = selectedOrder.filter(v => v !== this.value);
+          }
+
+          Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
+            const cb = lab.querySelector("input");
+            const idx = selectedOrder.indexOf(cb.value);
+            lab.querySelector("span").textContent = idx !== -1 ? `${idx+1}. ` : "";
+          });
+        });
+
+        label.appendChild(span);
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(nome));
+
+        playersContainer.appendChild(label);
+      }
+    });
+
+    alert("Giocatori caricati correttamente!");
+  };
+
+  reader.readAsArrayBuffer(file);
+});
+
+// ==================== SALVA TAVOLO ====================
+function saveTable(){
+  if(selectedOrder.length === 0){
+    alert("Seleziona almeno un giocatore!");
+    return;
+  }
+
+  const id = editingId || ("table_" + Date.now());
+
+  db.ref("tables/"+id).set({
+    name: document.getElementById("name").value || "Tavolo 1",
+    players: selectedOrder.map(p => String(p)),
+    limit: Number(document.getElementById("limit").value),
+    winners: Number(document.getElementById("winners").value),
+    password: document.getElementById("password").value,
+    editor: null,
+    game: null
+  });
+
+  editingId = null;
+  selectedOrder = [];
+
+  Array.from(playersContainer.querySelectorAll("input[type=checkbox]")).forEach(cb => {
+    cb.checked = false;
+    cb.previousSibling.textContent = "";
+  });
+
+  alert("Tavolo salvato correttamente!");
+}
+
+// ==================== ELIMINA TAVOLO ====================
+function deleteTable(id){
+  if(confirm("Vuoi eliminare questo tavolo?")){
+    db.ref("tables/"+id).remove();
+  }
+}
+
+// ==================== MODIFICA TAVOLO ====================
+function editTable(id){
+  db.ref("tables/"+id).once("value").then(snap => {
+    const table = snap.val();
+    if(!table) return;
+
+    editingId = id;
+
+    document.getElementById("name").value = table.name;
+    document.getElementById("limit").value = table.limit;
+    document.getElementById("winners").value = table.winners;
+    document.getElementById("password").value = table.password;
+
+    selectedOrder = table.players.slice();
+
+    Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
+      const cb = lab.querySelector("input");
+      if(selectedOrder.includes(cb.value)){
+        cb.checked = true;
+        const idx = selectedOrder.indexOf(cb.value);
+        lab.querySelector("span").textContent = `${idx+1}. `;
+      } else {
+        cb.checked = false;
+        lab.querySelector("span").textContent = "";
+      }
+    });
+
+    window.scrollTo(0,0);
+  });
+}
+
+// ==================== VISUALIZZAZIONE TAVOLI ====================
+db.ref("tables").on("value", snap => {
+  const tables = snap.val() || {};
+  const div = document.getElementById("tables");
+  div.innerHTML = "";
+
+  let tableIndex = 1;
+
+  for(let id in tables){
+    const t = tables[id];
+
+    const playersList = Array.isArray(t.players)
+      ? t.players.map((p,i) => {
+          let nome = typeof p === "object" && p !== null ? (p.name || "Giocatore") : String(p);
+          return `<li><span class="order">${i+1}.</span> ${nome}</li>`;
+        }).join("")
+      : `<li>${String(t.players)}</li>`;
+
+    div.innerHTML += `
+      <div class="table">
+        <b>${tableIndex}. ${t.name}</b>
+        <ul class="players-list">
+          ${playersList}
+        </ul>
+        <div class="table-info">
+          Limite punti: ${t.limit} | Vincitori: ${t.winners}
+        </div>
+        <div class="actions">
+          <button onclick="editTable('${id}')">✏️ Modifica</button>
+          <button onclick="deleteTable('${id}')">❌ Elimina</button>
+        </div>
+      </div>
+    `;
+
+    tableIndex++;
+  }
+});
+</script>
+
+</body>
+</html>
