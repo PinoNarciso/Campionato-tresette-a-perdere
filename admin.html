@@ -381,24 +381,6 @@ db.ref("tables").on("value", snap => {
     tableIndex++;
   }
 });
-
-// ==================== PULIZIA VECCHI TAVOLI ====================
-db.ref("tables").once("value").then(snap => {
-  const tables = snap.val() || {};
-  for(let id in tables){
-    const t = tables[id];
-    if(Array.isArray(t.players)){
-      const newPlayers = t.players.map(p => {
-        if(typeof p === "object" && p !== null){
-          return p.name || "Giocatore";
-        } else {
-          return String(p);
-        }
-      });
-      db.ref("tables/"+id+"/players").set(newPlayers);
-    }
-  }
-});
 </script>
 
 </body>
