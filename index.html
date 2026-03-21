@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>Tavoli Tressette</title>
+<title>Campionato Tressette a Perdere</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -200,7 +200,7 @@ db.ref("tables").on("value", snap => {
             </div>
             <div class="info">Limite punti: ${t.limit || 0} | Vincitori: ${t.winners || 0}</div>
             <div class="btn-container">
-                <button onclick="enterAdmin('${id}')">Vai al Tavolo come Admin</button>
+                <button onclick="enterAdmin('${id}')">Segnapunti</button>
                 <button onclick="enterVisitor('${id}')">Vai al Tavolo</button>
             </div>
         `;
