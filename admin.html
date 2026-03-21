@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -28,15 +28,15 @@ body {
   padding: 10px;
   margin: 0;
   width: 100%;
-  overflow-x: hidden; /* evita scroll orizzontale */
+  overflow-x: hidden;
 }
 
 .container {
   display: flex;
-  flex-direction: column; /* colonna unica */
+  flex-direction: column;
   gap: 20px;
   max-width: 550px;
-  width: 95%; /* più fluido su smartphone */
+  width: 95%;
   margin: 0 auto;
 }
 
@@ -46,7 +46,7 @@ body {
   border-radius: 10px;
   width: 100%;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  text-align: left; /* tutto il contenuto allineato a sinistra */
+  text-align: left;
 }
 
 h2, h3 {
@@ -93,7 +93,7 @@ button:hover {
   border: 1px solid #ccc;
   padding: 8px;
   border-radius: 5px;
-  word-break: break-word; /* evita overflow testi lunghi */
+  word-break: break-word;
 }
 
 label {
@@ -137,7 +137,7 @@ label input[type="checkbox"] {
   font-size: 0.95em;
   padding: 4px 0;
   display: flex;
-  justify-content: flex-start; /* numeri e nomi a sinistra */
+  justify-content: flex-start;
   gap: 5px;
 }
 
@@ -209,6 +209,45 @@ let editingId = null;
 let selectedOrder = [];
 const playersContainer = document.getElementById("playersContainer");
 
+// ==================== FUNZIONE PER POPOLARE GIOCATORI ====================
+function populatePlayers(playersArray){
+  playersContainer.innerHTML = "";
+  selectedOrder = [];
+
+  playersArray.forEach(nome => {
+    const label = document.createElement("label");
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = nome;
+
+    const span = document.createElement("span");
+    span.textContent = "";
+
+    checkbox.addEventListener("change", function(){
+      if(this.checked){
+        selectedOrder.push(this.value);
+      } else {
+        selectedOrder = selectedOrder.filter(v => v !== this.value);
+      }
+
+      Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
+        const cb = lab.querySelector("input");
+        const idx = selectedOrder.indexOf(cb.value);
+        lab.querySelector("span").textContent = idx !== -1 ? `${idx+1}. ` : "";
+      });
+    });
+
+    label.appendChild(span);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(nome));
+
+    playersContainer.appendChild(label);
+  });
+}
+
 // ==================== CARICAMENTO GIOCATORI DA EXCEL ====================
 document.getElementById("fileInput").addEventListener("change", function(e){
   const file = e.target.files[0];
@@ -223,9 +262,7 @@ document.getElementById("fileInput").addEventListener("change", function(e){
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(sheet);
 
-    playersContainer.innerHTML = "";
-    selectedOrder = [];
-
+    const playersArray = [];
     json.forEach(row => {
       let nome = null;
       if(row.Giocatore){
@@ -235,45 +272,27 @@ document.getElementById("fileInput").addEventListener("change", function(e){
           nome = String(row.Giocatore);
         }
       }
-
-      if(nome){
-        const label = document.createElement("label");
-        label.style.display = "flex";
-        label.style.alignItems = "center";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.value = nome;
-
-        const span = document.createElement("span");
-        span.textContent = "";
-
-        checkbox.addEventListener("change", function(){
-          if(this.checked){
-            selectedOrder.push(this.value);
-          } else {
-            selectedOrder = selectedOrder.filter(v => v !== this.value);
-          }
-
-          Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
-            const cb = lab.querySelector("input");
-            const idx = selectedOrder.indexOf(cb.value);
-            lab.querySelector("span").textContent = idx !== -1 ? `${idx+1}. ` : "";
-          });
-        });
-
-        label.appendChild(span);
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(nome));
-
-        playersContainer.appendChild(label);
-      }
+      if(nome) playersArray.push(nome);
     });
 
+    // Salva su localStorage
+    localStorage.setItem("lastPlayers", JSON.stringify(playersArray));
+
+    populatePlayers(playersArray);
     alert("Giocatori caricati correttamente!");
   };
 
   reader.readAsArrayBuffer(file);
+});
+
+// ==================== CARICAMENTO AUTOMATICO ALL'APERTURA ====================
+window.addEventListener("load", function(){
+  const lastPlayers = localStorage.getItem("lastPlayers");
+  if(lastPlayers){
+    const playersArray = JSON.parse(lastPlayers);
+    populatePlayers(playersArray);
+    alert("Ultimo file giocatori caricato automaticamente!");
+  }
 });
 
 // ==================== SALVA TAVOLO ====================
