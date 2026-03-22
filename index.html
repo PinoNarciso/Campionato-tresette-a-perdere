@@ -11,16 +11,18 @@ body {
     background: #f0f2f5;
     padding: 20px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
 }
 
 .card {
     background: white;
     padding: 20px;
     border-radius: 12px;
-    max-width: 500px;
+    max-width: 800px;
     width: 100%;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
 }
 
 h2 {
@@ -57,10 +59,9 @@ h2 {
 }
 
 .player-name {
-    white-space: nowrap;
+    white-space: normal;
     max-width: 60%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: break-word;
 }
 
 .dots {
@@ -80,12 +81,12 @@ h2 {
 .hands-history {
     font-size: 13px;
     margin-top: 10px;
-    overflow-x: auto;   /* scroll orizzontale */
+    overflow-x: auto;
 }
 
 .hands-history table {
     width: 100%;
-    min-width: 300px;  /* evita di diventare troppo piccola */
+    min-width: 300px;
     border-collapse: collapse;
 }
 
@@ -93,7 +94,7 @@ h2 {
     padding: 4px 6px;
     border: 1px solid #ccc;
     text-align: center;
-    font-size: 12px;   /* più leggibile su mobile */
+    font-size: 12px;
 }
 
 .eliminated {
@@ -134,12 +135,84 @@ p.empty {
     margin:20px 0;
 }
 
-/* Mobile */
+.tables-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tables-grid .table {
+    flex: 1 1 250px;
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+/* Lo storico rimane nascosto finché non si clicca il pulsante */
+#storico-dettaglio {
+    display: none;
+}
+
+/* Pulsanti archivio */
+.archivio-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.archivio-list button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #1a73e8;
+    color: white;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 14px;
+}
+
+.archivio-list button:hover {
+    background: #1557b0;
+}
+
+/* Pulsante chiudi storico */
+#storico-dettaglio .close-btn {
+    background: #e53935;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    float: right;
+    margin-bottom: 10px;
+    transition: 0.2s;
+    font-size: 13px;
+}
+
+#storico-dettaglio .close-btn:hover {
+    background: #b71c1c;
+}
+
 @media(max-width: 500px){
     .btn-container { flex-direction: column; }
     button { width: 100%; }
 }
 </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Tavoli disponibili</h2>
+    <div id="tables">
+        <p class="empty">Caricamento tavoli...</p>
+    </div>
+</div>
+
+<div id="storico-dettaglio" class="card">
+    <!-- Lo storico comparirà solo al click sul pulsante -->
+</div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -160,20 +233,9 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
-</script>
 
-</head>
-<body>
-
-<div class="card">
-    <h2>Tavoli disponibili</h2>
-    <div id="tables">
-        <p class="empty">Caricamento tavoli...</p>
-    </div>
-</div>
-
-<script>
 const tablesDiv = document.getElementById("tables");
+const storicoDiv = document.getElementById("storico-dettaglio");
 
 db.ref("tables").on("value", snap => {
     const tables = snap.val() || {};
@@ -202,6 +264,7 @@ db.ref("tables").on("value", snap => {
             <div class="btn-container">
                 <button onclick="enterAdmin('${id}')">Segnapunti</button>
                 <button onclick="enterVisitor('${id}')">Vai al Tavolo</button>
+                <button onclick="visualizzaTuttiArchivi()">Storico</button>
             </div>
         `;
         tablesDiv.appendChild(div);
@@ -212,14 +275,11 @@ db.ref("tables").on("value", snap => {
                 ? players 
                 : (players && typeof players === "object" ? Object.values(players) : []);
 
-            // Controllo partita finita
             const gameOver = playersArray.filter(p => (p.score||0) < (t.limit||0)).length <= (t.winners||1);
             if(gameOver){
-                // Ordina dal punteggio più basso al più alto
                 playersArray.sort((a,b) => (a.score||0) - (b.score||0));
             }
 
-            // Lista giocatori
             const container = document.getElementById(`players-${id}`);
             if(playersArray.length === 0){
                 container.innerHTML = '<p class="empty">Nessun giocatore</p>';
@@ -240,7 +300,6 @@ db.ref("tables").on("value", snap => {
                 container.innerHTML = html;
             }
 
-            // Storico mani
             const handsDiv = document.getElementById(`hands-${id}`);
             if(playersArray.length === 0){
                 handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
@@ -293,6 +352,91 @@ function enterVisitor(id){
         localStorage.setItem("tableName", t.name || "Tavolo");
         window.location.href = "visitatore.html";
     });
+}
+
+/* ===== VISUALIZZA TUTTI GLI ARCHIVI ===== */
+function visualizzaTuttiArchivi() {
+    storicoDiv.style.display = "block"; 
+    storicoDiv.innerHTML = "Caricamento...";
+
+    db.ref("archivio").once("value").then(snap => {
+        const archivi = snap.val() || {};
+        if(Object.keys(archivi).length === 0){
+            storicoDiv.innerHTML = '<p class="empty">Nessuno storico disponibile</p>';
+            return;
+        }
+
+        const keys = Object.keys(archivi).sort();
+        let html = `
+            <button class="close-btn" onclick="chiudiStorico()">Chiudi storico</button>
+            <h3 style="color:#1a73e8; margin-top:0;">Seleziona uno storico:</h3>
+            <div class="archivio-list">
+        `;
+
+        keys.forEach(data => {
+            html += `<button onclick="mostraArchivio('${data}')">${data}</button>`;
+        });
+
+        html += '</div><div id="archivio-dettaglio" style="margin-top:15px;"></div>';
+        storicoDiv.innerHTML = html;
+    }).catch(err=>{
+        console.error(err);
+        storicoDiv.innerHTML = '<p class="empty">Errore nel caricamento dello storico</p>';
+    });
+}
+
+/* ===== MOSTRA L'ARCHIVIO SELEZIONATO ===== */
+function mostraArchivio(data) {
+    const dettaglioDiv = document.getElementById("archivio-dettaglio");
+    dettaglioDiv.innerHTML = "Caricamento storico per " + data + "...";
+
+    db.ref(`archivio/${data}`).once("value").then(snap => {
+        const archivio = snap.val() || {};
+        const tables = archivio.tables || {};
+        if(Object.keys(tables).length === 0){
+            dettaglioDiv.innerHTML = '<p class="empty">Nessun tavolo registrato in questo storico</p>';
+            return;
+        }
+
+        let html = '<div class="tables-grid">';
+        Object.values(tables).forEach(t=>{
+            let arr = Object.values(t.players||[]);
+            arr.sort((a,b)=>(a.score||0)-(b.score||0));
+            html+=`<div class="table"><b>${t.name}</b>`;
+            arr.forEach((p,i)=>{
+                html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
+                    <span class="player-name">${i+1}. ${p.name}</span>
+                    <span class="dots"></span>
+                    <span class="player-score">${p.score}</span>
+                </div>`;
+            });
+
+            const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
+            if(maxHands>0){
+                html+="<div class='hands-history'><table><tr><th>Mano</th>";
+                arr.forEach(p=>html+=`<th>${p.name}</th>`);
+                html+="</tr>";
+                for(let i=0;i<maxHands;i++){
+                    html+=`<tr><td>${i+1}</td>`;
+                    arr.forEach(p=>html+=`<td>${p.playerHistory?.[i]??"-"}</td>`);
+                    html+="</tr>";
+                }
+                html+="</table></div>";
+            }
+
+            html+="</div>";
+        });
+        html+="</div>";
+        dettaglioDiv.innerHTML = html;
+    }).catch(err=>{
+        console.error(err);
+        dettaglioDiv.innerHTML = '<p class="empty">Errore nel caricamento dello storico</p>';
+    });
+}
+
+/* ===== CHIUDI STORICO ===== */
+function chiudiStorico(){
+    storicoDiv.style.display = "none";
 }
 </script>
 

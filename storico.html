@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Campionato Tressette a Perdere</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { font-family:'Segoe UI', sans-serif; background:#f0f2f5; padding:20px; display:flex; justify-content:center; }
+.card { background:white; padding:20px; border-radius:12px; width:100%; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+h2 { text-align:center; color:#1a73e8; }
+.top-buttons{ text-align:center; margin-top:15px; }
+.top-buttons button{ padding:10px 15px; margin:5px; border:none; border-radius:6px; cursor:pointer; }
+.tables-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:15px; }
+.table { background:#f8f9fa; padding:12px; border-radius:8px; }
+.player-row { display:flex; align-items:center; }
+.player-name { max-width:60%; }
+.dots { flex:1; border-bottom:2px dotted #bbb; margin:0 6px; }
+.player-score { font-weight:bold; color:#1a73e8; }
+.hands-history table { width:100%; border-collapse:collapse; margin-top:5px; }
+.hands-history td, .hands-history th { border:1px solid #ccc; padding:3px; text-align:center; font-size:12px; }
+.eliminated { text-decoration:line-through; color:#aaa; }
+#storico-container{ margin-top:20px; display:none; }
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "campinato-tresette-a-perdere",
+  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+  messagingSenderId: "105475040052",
+  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+};
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.database();
+</script>
+
+</head>
+<body>
+<div class="card">
+<h2>Tavoli disponibili</h2>
+
+<!-- TAVOLI LIVE -->
+<div id="tables" class="tables-grid"></div>
+
+<!-- PULSANTI SOTTO LE TABELLE -->
+<div class="top-buttons">
+    <button style="background:#34a853;color:white;" onclick="archiviaDati()">📦 Archivia</button>
+    <button style="background:#fbbc05;" onclick="mostraStorico()">📊 Storico</button>
+</div>
+
+<!-- STORICO -->
+<div id="storico-container">
+    <input type="text" id="searchData" placeholder="🔍 Cerca data..." onkeyup="mostraStorico()">
+    <div id="storico-list"></div>
+    <div id="storico-dettaglio"></div>
+</div>
+</div>
+
+<script>
+const tablesDiv = document.getElementById("tables");
+
+/* ===== FUNZIONE PER DATA FORMATTATA ===== */
+function getDataFormattata(){
+    const mesi = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+    const giorni = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+    const d = new Date();
+    const giornoSettimana = giorni[d.getDay()];
+    const giorno = d.getDate();
+    const mese = mesi[d.getMonth()];
+    const anno = d.getFullYear();
+    return `${giornoSettimana}-${giorno}-${mese}-${anno}`;
+}
+
+/* ===== TAVOLI LIVE ===== */
+db.ref("tables").on("value", snap => {
+    const tables = snap.val() || {};
+    tablesDiv.innerHTML = "";
+    const keys = Object.keys(tables);
+    if(keys.length===0){ tablesDiv.innerHTML="<p>Nessun tavolo disponibile</p>"; return; }
+
+    keys.forEach(id=>{
+        const t = tables[id];
+        const div = document.createElement("div");
+        div.className="table";
+        div.innerHTML=`<b>${t.name}</b>
+            <div class="players-list" id="players-${id}"></div>
+            <div class="hands-history" id="hands-${id}"></div>
+            <div class="info">Limite punti: ${t.limit||0} | Vincitori: ${t.winners||0}</div>`;
+        tablesDiv.appendChild(div);
+
+        db.ref(`tables/${id}/players`).on("value", snapPlayers=>{
+            let players = snapPlayers.val();
+            let arr = Array.isArray(players)?players:Object.values(players||[]);
+            arr.sort((a,b)=>(a.score||0)-(b.score||0));
+
+            const pDiv = document.getElementById(`players-${id}`);
+            pDiv.innerHTML=arr.map((p,i)=>`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
+                <span>${i+1}. ${p.name}</span><span class="dots"></span><span>${p.score}</span></div>`).join("");
+
+            const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
+            let html="";
+            if(maxHands>0){
+                html="<table><tr><th>Mano</th>";
+                arr.forEach(p=>html+=`<th>${p.name}</th>`);
+                html+="</tr>";
+                for(let i=0;i<maxHands;i++){
+                    html+=`<tr><td>${i+1}</td>`;
+                    arr.forEach(p=>{ html+=`<td>${p.playerHistory?.[i]??"-"}</td>`; });
+                    html+="</tr>";
+                }
+                html+="</table>";
+            }
+            document.getElementById(`hands-${id}`).innerHTML=html;
+        });
+    });
+});
+
+/* ===== ARCHIVIA ===== */
+function archiviaDati(){
+    db.ref("tables").once("value").then(snap=>{
+        const data = snap.val();
+        if(!data){ 
+            alert("Nessun dato da archiviare"); 
+            return; 
+        }
+
+        // Data precompilata leggibile
+        const defaultData = getDataFormattata().replace(/-/g," ");
+        // Prompt per confermare o modificare
+        const nomeStorico = prompt("Confermare o modificare la data per l'archivio:", defaultData);
+        if(!nomeStorico) return; // annullato
+
+        // Sostituiamo eventuali spazi con - per path Firebase
+        const pathFirebase = nomeStorico.replace(/ /g,"-");
+
+        return db.ref("archivio/"+pathFirebase).set({ 
+            data: new Date().toISOString(), 
+            tables: data 
+        });
+    }).then(()=>{
+        alert("✅ Archiviato correttamente!");
+    }).catch(err=>{
+        console.error(err);
+        alert("Errore archiviazione");
+    });
+}
+/* ===== MOSTRA STORICO ===== */
+function mostraStorico(){
+    document.getElementById("storico-container").style.display="block";
+    const list = document.getElementById("storico-list");
+    list.innerHTML="Caricamento...";
+    db.ref("archivio").once("value").then(snap=>{
+        const archivi = snap.val()||{};
+        const filtro = document.getElementById("searchData").value.toLowerCase();
+        let html="";
+        Object.keys(archivi).sort().reverse().forEach(d=>{
+            if(filtro && !d.toLowerCase().includes(filtro)) return;
+            html+=`<div style="display:flex;margin:5px 0;">
+                <button onclick="visualizzaArchivio('${d}')" style="flex:1">${d.replace(/-/g," ")}</button>
+                <button onclick="eliminaArchivio('${d}')">❌</button>
+                <button onclick="esportaArchivio('${d}')">⬇</button>
+            </div>`;
+        });
+        list.innerHTML=html||"Nessun storico";
+    });
+}
+
+/* ===== VISUALIZZA ARCHIVIO ===== */
+function visualizzaArchivio(data){
+    const div = document.getElementById("storico-dettaglio");
+    div.innerHTML="Caricamento...";
+    db.ref("archivio/"+data).once("value").then(snap=>{
+        const tables = snap.val().tables;
+        let html='<div class="tables-grid">';
+        Object.values(tables).forEach(t=>{
+            let arr = Object.values(t.players||[]);
+            arr.sort((a,b)=>(a.score||0)-(b.score||0));
+            html+=`<div class="table"><b>${t.name}</b>`;
+            arr.forEach((p,i)=>{
+                html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
+                    <span>${i+1}. ${p.name}</span><span class="dots"></span><span>${p.score}</span>
+                </div>`;
+            });
+            const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
+            if(maxHands>0){
+                html+="<div class='hands-history'><table><tr><th>Mano</th>";
+                arr.forEach(p=>html+=`<th>${p.name}</th>`);
+                html+="</tr>";
+                for(let i=0;i<maxHands;i++){
+                    html+=`<tr><td>${i+1}</td>`;
+                    arr.forEach(p=>html+=`<td>${p.playerHistory?.[i]??"-"}</td>`);
+                    html+="</tr>";
+                }
+                html+="</table></div>";
+            }
+            html+="</div>";
+        });
+        html+="</div>";
+        div.innerHTML=html;
+    });
+}
+
+/* ===== ELIMINA ===== */
+function eliminaArchivio(data){
+    if(!confirm("Eliminare archivio?")) return;
+    db.ref("archivio/"+data).remove().then(()=>mostraStorico()).catch(err=>{ console.error(err); alert("Errore eliminazione"); });
+}
+
+/* ===== EXPORT CSV ===== */
+function esportaArchivio(data){
+    db.ref("archivio/"+data).once("value").then(snap=>{
+        const tables = snap.val().tables;
+        let csv="Tavolo,Giocatore,Punti\n";
+        Object.values(tables).forEach(t=>{ Object.values(t.players||{}).forEach(p=>{ csv+=`${t.name},${p.name},${p.score}\n`; }); });
+        const blob=new Blob([csv]); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="storico.csv"; a.click();
+    });
+}
+</script>
+</body>
+</html>
