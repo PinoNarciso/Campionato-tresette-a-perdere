@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-/* ===== GENERALE ===== */
 body {
     font-family: 'Segoe UI', sans-serif;
     background: #f0f2f5;
@@ -158,12 +157,10 @@ p.empty {
     margin-bottom: 6px;
 }
 
-/* Lo storico rimane nascosto finché non si clicca il pulsante */
 #storico-dettaglio {
     display: none;
 }
 
-/* Pulsanti archivio */
 .archivio-list {
     display: flex;
     flex-wrap: wrap;
@@ -178,7 +175,6 @@ p.empty {
     flex: 1 1 100px;
 }
 
-/* Pulsante chiudi storico */
 #storico-dettaglio .close-btn {
     background: #e53935;
     color: white;
@@ -196,19 +192,14 @@ p.empty {
     background: #b71c1c;
 }
 
-/* ===== RESPONSIVE ===== */
 @media(max-width: 800px){
-    .tables-grid .table {
-        flex: 1 1 45%;
-    }
+    .tables-grid .table { flex: 1 1 45%; }
 }
 
 @media(max-width: 500px){
     .btn-container { flex-direction: column; }
     button { width: 100%; }
-    .tables-grid .table {
-        flex: 1 1 100%;
-    }
+    .tables-grid .table { flex: 1 1 100%; }
     .player-row { font-size: 13px; }
     .hands-history th, .hands-history td { font-size: 11px; padding:3px 4px; }
 }
@@ -218,15 +209,11 @@ p.empty {
 
 <div class="card">
     <h2>Tavoli disponibili</h2>
-    <div id="tables">
-        <p class="empty">Caricamento tavoli...</p>
-    </div>
+    <div id="tables"><p class="empty">Caricamento tavoli...</p></div>
 </div>
 
-<div id="storico-dettaglio" class="card">
-</div>
+<div id="storico-dettaglio" class="card"></div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
@@ -285,51 +272,71 @@ db.ref("tables").on("value", snap => {
                 <button onclick="visualizzaTuttiArchivi()">Storico</button>
             </div>`;
         tablesDiv.appendChild(div);
-
-        db.ref(`tables/${id}/players`).on("value", snapPlayers => {
-            const players = snapPlayers.val();
-            let playersArray = Array.isArray(players) ? players : (players && typeof players === "object" ? Object.values(players) : []);
-
-            const gameOver = playersArray.filter(p => (p.score||0) < (t.limit||0)).length <= (t.winners||1);
-            if(gameOver){ playersArray.sort((a,b) => (a.score||0) - (b.score||0)); }
-
-            const container = document.getElementById(`players-${id}`);
-            if(playersArray.length === 0){ container.innerHTML = '<p class="empty">Nessun giocatore</p>'; } 
-            else {
-                const html = playersArray.map((p,i)=>{
-                    let nome = typeof p==="string"?p:p.name||"Giocatore";
-                    let score = p.score||0;
-                    return `<div class="player-row ${(score>=t.limit)?"eliminated":""}">
-                        <span class="player-name">${i+1}. ${nome}</span>
-                        <span class="dots"></span>
-                        <span class="player-score">${score}</span>
-                    </div>`;
-                }).join("");
-                container.innerHTML = html;
-            }
-
-            const handsDiv = document.getElementById(`hands-${id}`);
-            if(playersArray.length===0){ handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>'; return; }
-            const maxHands = Math.max(...playersArray.map(p=>(p.playerHistory||[]).length));
-            if(maxHands===0){ handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>'; return; }
-
-            let handsHtml = '<div style="overflow-x:auto;"><table><thead><tr><th>Mano</th>';
-            playersArray.forEach(p=>handsHtml+=`<th>${p.name}</th>`); handsHtml+='</tr></thead><tbody>';
-            for(let i=0;i<maxHands;i++){
-                handsHtml+=`<tr><td>${i+1}</td>`;
-                playersArray.forEach(p=>handsHtml+=`<td>${p.playerHistory?.[i]??"-"}</td>`); handsHtml+='</tr>';
-            }
-            handsHtml+='</tbody></table></div>'; handsDiv.innerHTML = handsHtml;
-        });
     });
 });
 
-function enterAdmin(id){ /* password check */ }
-function enterVisitor(id){ /* visitor redirect */ }
+function enterAdmin(id){ alert("Funzione Segnapunti: " + id); }
+function enterVisitor(id){ alert("Funzione Visitatori: " + id); }
 
-/* Funzioni storico */
-function visualizzaTuttiArchivi() { /* storico */ }
-function mostraArchivio(data) { /* dettaglio archivio */ }
+/* ===== STORICO ===== */
+function visualizzaTuttiArchivi() {
+    storicoDiv.style.display = "block";
+    storicoDiv.innerHTML = `<button class="close-btn" onclick="chiudiStorico()">Chiudi storico</button><p>Caricamento...</p>`;
+
+    db.ref("archivio").once("value").then(snap => {
+        const archivi = snap.val() || {};
+        if(Object.keys(archivi).length === 0){
+            storicoDiv.innerHTML += '<p class="empty">Nessuno storico disponibile</p>';
+            return;
+        }
+        let html = `<button class="close-btn" onclick="chiudiStorico()">Chiudi storico</button><h3 style="color:#1a73e8; margin-top:0;">Seleziona uno storico:</h3><div class="archivio-list">`;
+        Object.keys(archivi).sort().forEach(data => {
+            html += `<button onclick="mostraArchivio('${data}')">${data}</button>`;
+        });
+        html += '</div><div id="archivio-dettaglio" style="margin-top:15px;"></div>';
+        storicoDiv.innerHTML = html;
+    });
+}
+
+function mostraArchivio(data){
+    const dettaglioDiv = document.getElementById("archivio-dettaglio");
+    dettaglioDiv.innerHTML = "Caricamento storico " + data + "...";
+    db.ref(`archivio/${data}`).once("value").then(snap => {
+        const archivio = snap.val() || {};
+        const tables = archivio.tables || {};
+        if(Object.keys(tables).length === 0){ dettaglioDiv.innerHTML = '<p class="empty">Nessun tavolo registrato in questo storico</p>'; return; }
+
+        let html = '<div class="tables-grid">';
+        Object.values(tables).forEach(t=>{
+            let arr = Object.values(t.players||[]);
+            arr.sort((a,b)=>(a.score||0)-(b.score||0));
+            html+=`<div class="table"><b>${t.name}</b>`;
+            arr.forEach((p,i)=>{
+                html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
+                    <span class="player-name">${i+1}. ${p.name}</span>
+                    <span class="dots"></span>
+                    <span class="player-score">${p.score}</span>
+                </div>`;
+            });
+            const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
+            if(maxHands>0){
+                html+="<div class='hands-history'><table><tr><th>Mano</th>";
+                arr.forEach(p=>html+=`<th>${p.name}</th>`);
+                html+="</tr>";
+                for(let i=0;i<maxHands;i++){
+                    html+=`<tr><td>${i+1}</td>`;
+                    arr.forEach(p=>html+=`<td>${p.playerHistory?.[i]??"-"}</td>`);
+                    html+="</tr>";
+                }
+                html+="</table></div>";
+            }
+            html+="</div>";
+        });
+        html+="</div>";
+        dettaglioDiv.innerHTML = html;
+    });
+}
+
 function chiudiStorico(){ storicoDiv.style.display = "none"; }
 </script>
 
