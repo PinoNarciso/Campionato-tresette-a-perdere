@@ -16,6 +16,7 @@
 
 <style>
 * { box-sizing: border-box; }
+
 body {
   font-family: Arial;
   background: #f0f2f5;
@@ -39,7 +40,7 @@ body {
   border-radius: 10px;
   margin-bottom: 20px;
   width: 100%;
-  text-align: center;
+  text-align: center; /* centra la card */
 }
 
 input, button {
@@ -104,7 +105,9 @@ button {
 .players-list {
   list-style: none;
   padding: 0;
-  text-align: center;
+  margin: 0 auto;   /* mantiene centrata la lista nella card */
+  max-width: 90%;   /* larghezza contenuta */
+  text-align: left; /* allinea nomi a sinistra */
 }
 </style>
 </head>
@@ -116,7 +119,7 @@ button {
 <div class="card">
 <h2>Crea / Modifica Tavolo</h2>
 
-<input id="name" value="Tavolo 1">
+<input id="name" value="Tavolo 1 (Primo Turno)">
 <input type="file" id="fileInput">
 <div id="playersContainer"></div>
 <input id="limit" type="number" value="81">
