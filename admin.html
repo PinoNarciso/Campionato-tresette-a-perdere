@@ -6,8 +6,6 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="style.css">
-
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -17,51 +15,37 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-/* ==================== STILE GENERALE ==================== */
-* {
-  box-sizing: border-box;
-}
-
+* { box-sizing: border-box; }
 body {
-  font-family: Arial, sans-serif;
+  font-family: Arial;
   background: #f0f2f5;
-  padding: 10px;
   margin: 0;
-  width: 100%;
-  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
 }
 
 .container {
+  max-width: 550px;
+  width: 100%;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-width: 550px;
-  width: 95%;
-  margin: 0 auto;
+  align-items: center;
 }
 
 .card {
   background: white;
   padding: 15px;
   border-radius: 10px;
+  margin-bottom: 20px;
   width: 100%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  text-align: left;
-}
-
-h2, h3 {
-  margin-top: 0;
-  font-size: 1.2em;
-  text-align: left;
+  text-align: center;
 }
 
 input, button {
-  font-size: 1em;
+  width: 100%;
   padding: 10px;
   margin-bottom: 10px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  width: 100%;
 }
 
 button {
@@ -69,335 +53,238 @@ button {
   color: white;
   border: none;
   cursor: pointer;
-  transition: background 0.2s;
-}
-
-button:hover {
-  background: #2980b9;
 }
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 5px;
 }
 
 .actions button {
-  flex: 1 1 48%;
-  margin: 2px 0;
+  flex: 1;
 }
 
+#tables {
+  width: 100%;
+}
+
+/* Lista giocatori */
 #playersContainer {
   max-height: 250px;
   overflow-y: auto;
   border: 1px solid #ccc;
-  padding: 8px;
   border-radius: 5px;
-  word-break: break-word;
 }
 
-label {
+.player-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.player-item.selected {
+  background: #eaf4ff;
+}
+
+.player-order {
+  background: #3498db;
+  color: white;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
-  padding: 5px 0;
+  justify-content: center;
+  font-size: 0.8em;
 }
 
-label input[type="checkbox"] {
-  margin-right: 10px;
-  transform: scale(1.2);
-}
-
-/* ==================== TAVOLI CREATI ==================== */
-.table {
-  background: #ffffff;
-  padding: 12px 15px;
-  margin-top: 15px;
-  border-radius: 10px;
-  line-height: 1.5;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  word-break: break-word;
-  text-align: left;
-}
-
-.table b {
-  display: block;
-  font-size: 1.1em;
-  margin-bottom: 8px;
-  text-align: left;
-}
-
+/* Lista tavoli */
 .players-list {
-  padding-left: 0;
-  margin: 0;
   list-style: none;
-  text-align: left;
-}
-
-.players-list li {
-  font-size: 0.95em;
-  padding: 4px 0;
-  display: flex;
-  justify-content: flex-start;
-  gap: 5px;
-}
-
-.players-list li span.order {
-  font-weight: bold;
-  margin-right: 5px;
-  color: #2c3e50;
-}
-
-.table-info {
-  font-size: 0.9em;
-  color: #555;
-  margin-top: 8px;
-  text-align: left;
-}
-
-/* ==================== MEDIA QUERY ==================== */
-@media (max-width: 600px) {
-  .container {
-    width: 95%;
-  }
-  h2, h3 {
-    font-size: 1.1em;
-  }
-  .table b {
-    font-size: 1em;
-  }
-  .players-list li {
-    font-size: 0.9em;
-  }
-  .actions button {
-    flex: 1 1 100%;
-  }
+  padding: 0;
+  text-align: center;
 }
 </style>
 </head>
+
 <body>
 
 <div class="container">
-  <!-- CREA / MODIFICA TAVOLO -->
-  <div class="card">
-    <h2>Crea / Modifica Tavolo</h2>
 
-    <input id="name" value="Tavolo 1" placeholder="Nome tavolo">
+<div class="card">
+<h2>Crea / Modifica Tavolo</h2>
 
-    <label>Carica file giocatori (.xlsx):</label>
-    <input type="file" id="fileInput" accept=".xlsx">
+<input id="name" value="Tavolo 1">
+<input type="file" id="fileInput">
+<div id="playersContainer"></div>
+<input id="limit" type="number" value="81">
+<input id="winners" type="number" value="3">
+<input id="password" type="password">
+<button onclick="saveTable()">Salva Tavolo</button>
+</div>
 
-    <label>Seleziona giocatori:</label>
-    <div id="playersContainer"></div>
+<div class="card">
+<h3>Tavoli creati</h3>
+<div id="tables"></div>
+</div>
 
-    <input id="limit" type="number" value="81" placeholder="Limite punti">
-    <input id="winners" type="number" value="3" placeholder="Numero vincitori">
-    <input id="password" type="password" placeholder="Password tavolo">
-
-    <button onclick="saveTable()">Salva Tavolo</button>
-  </div>
-
-  <!-- TAVOLI CREATI -->
-  <div class="card">
-    <h3>Tavoli creati</h3>
-    <div id="tables"></div>
-  </div>
 </div>
 
 <script>
-// ==================== VARIABILI GLOBALI ====================
+// ===== VARIABILI =====
 let editingId = null;
 let selectedOrder = [];
 const playersContainer = document.getElementById("playersContainer");
+const tablesDiv = document.getElementById("tables");
 
-// ==================== FUNZIONE PER POPOLARE GIOCATORI ====================
+// ===== POPOLA GIOCATORI =====
 function populatePlayers(playersArray){
   playersContainer.innerHTML = "";
   selectedOrder = [];
 
   playersArray.forEach(nome => {
-    const label = document.createElement("label");
-    label.style.display = "flex";
-    label.style.alignItems = "center";
+    const div = document.createElement("div");
+    div.className = "player-item";
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = nome;
+    const name = document.createElement("div");
+    name.textContent = nome;
 
-    const span = document.createElement("span");
-    span.textContent = "";
+    const order = document.createElement("div");
+    order.className = "player-order";
+    order.style.display = "none";
 
-    checkbox.addEventListener("change", function(){
-      if(this.checked){
-        selectedOrder.push(this.value);
-      } else {
-        selectedOrder = selectedOrder.filter(v => v !== this.value);
-      }
+    div.appendChild(name);
+    div.appendChild(order);
 
-      Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
-        const cb = lab.querySelector("input");
-        const idx = selectedOrder.indexOf(cb.value);
-        lab.querySelector("span").textContent = idx !== -1 ? `${idx+1}. ` : "";
-      });
-    });
+    div.onclick = () => {
+      const i = selectedOrder.indexOf(nome);
+      if(i === -1) selectedOrder.push(nome);
+      else selectedOrder.splice(i,1);
+      aggiornaUI();
+    };
 
-    label.appendChild(span);
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(nome));
-
-    playersContainer.appendChild(label);
+    playersContainer.appendChild(div);
   });
 }
 
-// ==================== CARICAMENTO GIOCATORI DA EXCEL ====================
-document.getElementById("fileInput").addEventListener("change", function(e){
+// ===== AGGIORNA UI =====
+function aggiornaUI(){
+  Array.from(playersContainer.children).forEach(item => {
+    const nome = item.firstChild.textContent;
+    const orderBox = item.lastChild;
+    const idx = selectedOrder.indexOf(nome);
+
+    if(idx !== -1){
+      item.classList.add("selected");
+      orderBox.style.display = "flex";
+      orderBox.textContent = idx + 1;
+    } else {
+      item.classList.remove("selected");
+      orderBox.style.display = "none";
+    }
+  });
+}
+
+// ===== CARICA EXCEL =====
+fileInput.onchange = function(e){
   const file = e.target.files[0];
   if(!file) return;
 
   const reader = new FileReader();
-
   reader.onload = function(evt){
     const data = new Uint8Array(evt.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
-
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const wb = XLSX.read(data, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(sheet);
-
-    const playersArray = [];
-    json.forEach(row => {
-      let nome = null;
-      if(row.Giocatore){
-        if(typeof row.Giocatore === "object" && row.Giocatore.v){
-          nome = String(row.Giocatore.v);
-        } else {
-          nome = String(row.Giocatore);
-        }
-      }
-      if(nome) playersArray.push(nome);
-    });
-
-    // Salva su localStorage
-    localStorage.setItem("lastPlayers", JSON.stringify(playersArray));
-
-    populatePlayers(playersArray);
-    alert("Giocatori caricati correttamente!");
+    const arr = [];
+    json.forEach(r => { if(r.Giocatore) arr.push(String(r.Giocatore)); });
+    localStorage.setItem("lastPlayers", JSON.stringify(arr));
+    populatePlayers(arr);
   };
-
   reader.readAsArrayBuffer(file);
-});
+};
 
-// ==================== CARICAMENTO AUTOMATICO ALL'APERTURA ====================
-window.addEventListener("load", function(){
-  const lastPlayers = localStorage.getItem("lastPlayers");
-  if(lastPlayers){
-    const playersArray = JSON.parse(lastPlayers);
-    populatePlayers(playersArray);
-    alert("Ultimo file giocatori caricato automaticamente!");
-  }
-});
+// ===== AUTOLOAD =====
+window.onload = () => {
+  const p = localStorage.getItem("lastPlayers");
+  if(p) populatePlayers(JSON.parse(p));
+};
 
-// ==================== SALVA TAVOLO ====================
+// ===== SALVA TAVOLO =====
 function saveTable(){
-  if(selectedOrder.length === 0){
-    alert("Seleziona almeno un giocatore!");
-    return;
-  }
+  if(selectedOrder.length === 0){ alert("Seleziona giocatori"); return; }
 
   const id = editingId || ("table_" + Date.now());
+  const nome = document.getElementById("name").value;
+  const limitVal = Number(document.getElementById("limit").value);
+  const winnersVal = Number(document.getElementById("winners").value);
+  const passwordVal = document.getElementById("password").value;
 
-  db.ref("tables/"+id).set({
-    name: document.getElementById("name").value || "Tavolo 1",
-    players: selectedOrder.map(p => String(p)),
-    limit: Number(document.getElementById("limit").value),
-    winners: Number(document.getElementById("winners").value),
-    password: document.getElementById("password").value,
-    editor: null,
-    game: null
-  });
-
-  editingId = null;
-  selectedOrder = [];
-
-  Array.from(playersContainer.querySelectorAll("input[type=checkbox]")).forEach(cb => {
-    cb.checked = false;
-    cb.previousSibling.textContent = "";
-  });
-
-  alert("Tavolo salvato correttamente!");
-}
-
-// ==================== ELIMINA TAVOLO ====================
-function deleteTable(id){
-  if(confirm("Vuoi eliminare questo tavolo?")){
-    db.ref("tables/"+id).remove();
-  }
-}
-
-// ==================== MODIFICA TAVOLO ====================
-function editTable(id){
   db.ref("tables/"+id).once("value").then(snap => {
-    const table = snap.val();
-    if(!table) return;
+    const old = snap.val() || {};
 
-    editingId = id;
-
-    document.getElementById("name").value = table.name;
-    document.getElementById("limit").value = table.limit;
-    document.getElementById("winners").value = table.winners;
-    document.getElementById("password").value = table.password;
-
-    selectedOrder = table.players.slice();
-
-    Array.from(playersContainer.querySelectorAll("label")).forEach(lab => {
-      const cb = lab.querySelector("input");
-      if(selectedOrder.includes(cb.value)){
-        cb.checked = true;
-        const idx = selectedOrder.indexOf(cb.value);
-        lab.querySelector("span").textContent = `${idx+1}. `;
-      } else {
-        cb.checked = false;
-        lab.querySelector("span").textContent = "";
-      }
+    db.ref("tables/"+id).set({
+      name: nome || "Tavolo",
+      players: selectedOrder.map(p => String(p)),
+      limit: limitVal || 81,
+      winners: winnersVal || 3,
+      password: passwordVal || "",
+      game: old.game || null,
+      editor: old.editor || null
     });
 
-    window.scrollTo(0,0);
+    editingId = null;
+    selectedOrder = [];
+    aggiornaUI();
+    alert("Tavolo salvato!");
   });
 }
 
-// ==================== VISUALIZZAZIONE TAVOLI ====================
+// ===== ELIMINA =====
+function deleteTable(id){
+  if(confirm("Eliminare?")){ db.ref("tables/"+id).remove(); }
+}
+
+// ===== MODIFICA =====
+function editTable(id){
+  db.ref("tables/"+id).once("value").then(snap => {
+    const t = snap.val();
+    if(!t) return;
+    editingId = id;
+    document.getElementById("name").value = t.name || "";
+    document.getElementById("limit").value = t.limit || 81;
+    document.getElementById("winners").value = t.winners || 3;
+    document.getElementById("password").value = t.password || "";
+    selectedOrder = (t.players || []).map(p => typeof p === "object" ? String(p.name || "") : String(p));
+    aggiornaUI();
+    scrollTo(0,0);
+  });
+}
+
+// ===== VISUALIZZA =====
 db.ref("tables").on("value", snap => {
   const tables = snap.val() || {};
-  const div = document.getElementById("tables");
-  div.innerHTML = "";
-
-  let tableIndex = 1;
-
+  tablesDiv.innerHTML = "";
+  let i = 1;
   for(let id in tables){
     const t = tables[id];
-
-    const playersList = Array.isArray(t.players)
-      ? t.players.map((p,i) => {
-          let nome = typeof p === "object" && p !== null ? (p.name || "Giocatore") : String(p);
-          return `<li><span class="order">${i+1}.</span> ${nome}</li>`;
-        }).join("")
-      : `<li>${String(t.players)}</li>`;
-
-    div.innerHTML += `
-      <div class="table">
-        <b>${tableIndex}. ${t.name}</b>
-        <ul class="players-list">
-          ${playersList}
-        </ul>
-        <div class="table-info">
-          Limite punti: ${t.limit} | Vincitori: ${t.winners}
-        </div>
+    const list = (t.players || []).map((p,idx) => {
+      let nome = typeof p === "object" ? p.name : p;
+      return `<li>${idx+1}. ${nome}</li>`;
+    }).join("");
+    tablesDiv.innerHTML += `
+      <div class="card">
+        <b>${i}. ${t.name}</b>
+        <ul class="players-list">${list}</ul>
+        <div>Limite: ${t.limit} | Vincitori: ${t.winners}</div>
         <div class="actions">
-          <button onclick="editTable('${id}')">✏️ Modifica</button>
-          <button onclick="deleteTable('${id}')">❌ Elimina</button>
+          <button onclick="editTable('${id}')">Modifica</button>
+          <button onclick="deleteTable('${id}')">Elimina</button>
         </div>
-      </div>
-    `;
-
-    tableIndex++;
+      </div>`;
+    i++;
   }
 });
 </script>
