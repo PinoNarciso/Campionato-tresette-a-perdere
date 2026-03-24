@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Campionato Tressette a Perdere</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body {
     font-family:'Segoe UI', sans-serif;
@@ -21,34 +22,90 @@ body {
     box-shadow:0 4px 12px rgba(0,0,0,0.1);
 }
 h2 { text-align:center; color:#1a73e8; margin-bottom:15px;}
+
 .tables-grid {
     display:grid;
     grid-template-columns:repeat(3,1fr);
     gap:15px;
     margin-bottom:20px;
 }
+
 .table {
     background:#f8f9fa;
     padding:12px;
     border-radius:8px;
     min-height:150px;
 }
+
+/* GRID PERFETTA CON PUNTINI */
 .player-row {
-    display:flex;
+    display:grid;
+    grid-template-columns: auto 1fr 60px; /* nome | puntini | punteggio */
     align-items:center;
     margin:2px 0;
     font-size:14px;
 }
-.player-name { max-width:60%; word-break:break-word; }
-.dots { flex:1; border-bottom:2px dotted #bbb; margin:0 6px; }
-.player-score { font-weight:bold; color:#1a73e8; }
+
+.player-name {
+    overflow:hidden;
+    white-space:nowrap;
+}
+
+.dots {
+    border-bottom:2px dotted #bbb;
+    margin:0 6px;
+    height:0;
+}
+
+.player-score {
+    font-weight:bold;
+    color:#1a73e8;
+    text-align:right;
+}
+
 .eliminated { text-decoration:line-through; color:#aaa; }
-.hands-history table { width:100%; border-collapse:collapse; margin-top:5px; font-size:12px; }
-.hands-history td, .hands-history th { border:1px solid #ccc; padding:3px; text-align:center; }
-#storico-list div.archive-row{ margin:3px 0; display:flex; align-items:center; gap:5px; }
-#storico-list span{ flex:1; font-weight:bold; color:#1a73e8; }
-#storico-list button{ padding:5px 10px; border-radius:5px; border:none; cursor:pointer; background:#1a73e8; color:white; }
-#loading-msg { text-align:center; margin:10px 0; color:#555; }
+
+.hands-history table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:5px;
+    font-size:12px;
+}
+
+.hands-history td, .hands-history th {
+    border:1px solid #ccc;
+    padding:3px;
+    text-align:center;
+}
+
+#storico-list div.archive-row{
+    margin:3px 0;
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+#storico-list span{
+    flex:1;
+    font-weight:bold;
+    color:#1a73e8;
+}
+
+#storico-list button{
+    padding:5px 10px;
+    border-radius:5px;
+    border:none;
+    cursor:pointer;
+    background:#1a73e8;
+    color:white;
+}
+
+#loading-msg {
+    text-align:center;
+    margin:10px 0;
+    color:#555;
+}
+
 .detail-row { margin-bottom:10px; }
 </style>
 
@@ -69,10 +126,11 @@ const firebaseConfig = {
   messagingSenderId: "105475040052",
   appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
 };
+
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.database();
 
-/* ===== CARICAMENTO STORICO AUTOMATICO ===== */
+/* ===== MOSTRA STORICO ===== */
 function mostraStorico(){
     const list = document.getElementById("storico-list");
     list.innerHTML = '<div id="loading-msg">Caricamento storico...</div>';
@@ -95,7 +153,7 @@ function mostraStorico(){
     });
 }
 
-/* ===== VISUALIZZA / NASCONDI DETTAGLIO SOTTO LA RIGA ===== */
+/* ===== VISUALIZZA / NASCONDI DETTAGLIO ===== */
 function visualizzaArchivio(data){
     const row = document.getElementById(`row-${data}`);
     let detailDiv = document.getElementById(`detail-${data}`);
@@ -137,7 +195,9 @@ function visualizzaArchivio(data){
                 arr.sort((a,b)=>(a.score||0)-(b.score||0));
                 arr.forEach((p,i)=>{
                     html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
-                        <span class="player-name">${i+1}. ${p.name}</span><span class="dots"></span><span class="player-score">${p.score}</span>
+                        <span class="player-name">${i+1}. ${p.name}</span>
+                        <span class="dots"></span>
+                        <span class="player-score">${p.score}</span>
                     </div>`;
                 });
 
@@ -162,26 +222,23 @@ function visualizzaArchivio(data){
     });
 }
 
-/* ===== EXPORT SINGOLO ARCHIVIO IN EXCEL CON COLONNE PER MANO ===== */
+/* ===== EXPORT EXCEL ===== */
 function esportaArchivio(data){
     db.ref("archivio/"+data).once("value").then(snap=>{
         const tables = snap.val()?.tables || {};
         let rows = [];
-
-        // Trova il numero massimo di mani
         let maxHands = 0;
+
         Object.values(tables).forEach(t=>{
             Object.values(t.players||{}).forEach(p=>{
                 if(p.playerHistory) maxHands = Math.max(maxHands, p.playerHistory.length);
             });
         });
 
-        // Intestazioni
         let headers = ["Tavolo","Giocatore","Punti"];
         for(let i=1;i<=maxHands;i++) headers.push(`Mano ${i}`);
         rows.push(headers);
 
-        // Riempimento dati
         Object.values(tables).forEach(t=>{
             Object.values(t.players||{}).forEach(p=>{
                 let riga = [t.name, p.name, p.score];
@@ -204,7 +261,7 @@ function esportaArchivio(data){
     });
 }
 
-/* ===== EXPORT SINGOLO ARCHIVIO IN PDF ===== */
+/* ===== EXPORT PDF ===== */
 function esportaArchivioPDF(data){
     db.ref("archivio/"+data).once("value").then(snap=>{
         const tables = snap.val()?.tables || {};
@@ -220,7 +277,9 @@ function esportaArchivioPDF(data){
                 arr.sort((a,b)=>(a.score||0)-(b.score||0));
                 arr.forEach((p,i)=>{
                     html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
-                        <span class="player-name">${i+1}. ${p.name}</span><span class="dots"></span><span class="player-score">${p.score}</span>
+                        <span class="player-name">${i+1}. ${p.name}</span>
+                        <span class="dots"></span>
+                        <span class="player-score">${p.score}</span>
                     </div>`;
                 });
                 const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
@@ -276,6 +335,7 @@ function esportaArchivioPDF(data){
 document.addEventListener("DOMContentLoaded", ()=>mostraStorico());
 </script>
 </head>
+
 <body>
 <div class="card">
 <h2>Storico Partite</h2>

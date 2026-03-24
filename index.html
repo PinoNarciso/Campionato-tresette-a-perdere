@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>Campionato Tressette a Perdere</title>
+<title>Tressette a Perdere</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -80,12 +80,12 @@ h2 {
 .hands-history {
     font-size: 13px;
     margin-top: 10px;
-    overflow-x: auto;   /* scroll orizzontale */
+    overflow-x: auto;
 }
 
 .hands-history table {
     width: 100%;
-    min-width: 300px;  /* evita di diventare troppo piccola */
+    min-width: 300px;
     border-collapse: collapse;
 }
 
@@ -93,7 +93,7 @@ h2 {
     padding: 4px 6px;
     border: 1px solid #ccc;
     text-align: center;
-    font-size: 12px;   /* più leggibile su mobile */
+    font-size: 12px;
 }
 
 .eliminated {
@@ -134,7 +134,23 @@ p.empty {
     margin:20px 0;
 }
 
-/* Mobile */
+/* Pulsante speciale Crea/Modifica tavoli */
+.btn-admin {
+    background-color: #27ae60; /* verde brillante */
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px 18px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.btn-admin:hover {
+    background-color: #1e8449;
+}
+
 @media(max-width: 500px){
     .btn-container { flex-direction: column; }
     button { width: 100%; }
@@ -167,6 +183,14 @@ const db = firebase.database();
 
 <div class="card">
     <h2>Tavoli disponibili</h2>
+
+    <!-- Pulsante Crea/Modifica tavoli -->
+    <div style="text-align:center; margin-bottom:12px;">
+        <button class="btn-admin" onclick="window.location.href='admin.html'">
+            Crea/Modifica tavoli
+        </button>
+    </div>
+
     <div id="tables">
         <p class="empty">Caricamento tavoli...</p>
     </div>
@@ -202,6 +226,7 @@ db.ref("tables").on("value", snap => {
             <div class="btn-container">
                 <button onclick="enterAdmin('${id}')">Segnapunti</button>
                 <button onclick="enterVisitor('${id}')">Vai al Tavolo</button>
+                <button onclick="enterHistory('${id}')">Storico</button>
             </div>
         `;
         tablesDiv.appendChild(div);
@@ -212,14 +237,11 @@ db.ref("tables").on("value", snap => {
                 ? players 
                 : (players && typeof players === "object" ? Object.values(players) : []);
 
-            // Controllo partita finita
             const gameOver = playersArray.filter(p => (p.score||0) < (t.limit||0)).length <= (t.winners||1);
             if(gameOver){
-                // Ordina dal punteggio più basso al più alto
                 playersArray.sort((a,b) => (a.score||0) - (b.score||0));
             }
 
-            // Lista giocatori
             const container = document.getElementById(`players-${id}`);
             if(playersArray.length === 0){
                 container.innerHTML = '<p class="empty">Nessun giocatore</p>';
@@ -240,7 +262,6 @@ db.ref("tables").on("value", snap => {
                 container.innerHTML = html;
             }
 
-            // Storico mani
             const handsDiv = document.getElementById(`hands-${id}`);
             if(playersArray.length === 0){
                 handsDiv.innerHTML = '<p class="empty">Nessuna mano giocata</p>';
@@ -292,6 +313,15 @@ function enterVisitor(id){
         localStorage.setItem("tableID", id);
         localStorage.setItem("tableName", t.name || "Tavolo");
         window.location.href = "visitatore.html";
+    });
+}
+
+function enterHistory(id){
+    db.ref(`tables/${id}`).once("value").then(snapshot => {
+        const t = snapshot.val() || {};
+        localStorage.setItem("tableID", id);
+        localStorage.setItem("tableName", t.name || "Tavolo");
+        window.location.href = "storicoUtente.html";
     });
 }
 </script>
