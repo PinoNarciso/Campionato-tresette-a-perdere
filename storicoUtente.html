@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Campionato Tressette a Perdere</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    font-family:'Segoe UI', sans-serif;
+    background:#f0f2f5;
+    padding:20px;
+    display:flex;
+    justify-content:center;
+}
+.card {
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    width:100%;
+    max-width:1200px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+}
+h2 { text-align:center; color:#1a73e8; margin-bottom:15px;}
+
+.tables-grid {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.table {
+    background:#f8f9fa;
+    padding:12px;
+    border-radius:8px;
+    min-height:150px;
+}
+
+/* GRID PERFETTA CON PUNTINI */
+.player-row {
+    display:grid;
+    grid-template-columns: auto 1fr 60px; /* nome | puntini | punteggio */
+    align-items:center;
+    margin:2px 0;
+    font-size:14px;
+}
+
+.player-name {
+    overflow:hidden;
+    white-space:nowrap;
+}
+
+.dots {
+    border-bottom:2px dotted #bbb;
+    margin:0 6px;
+    height:0;
+}
+
+.player-score {
+    font-weight:bold;
+    color:#1a73e8;
+    text-align:right;
+}
+
+.eliminated { text-decoration:line-through; color:#aaa; }
+
+.hands-history table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:5px;
+    font-size:12px;
+}
+
+.hands-history td, .hands-history th {
+    border:1px solid #ccc;
+    padding:3px;
+    text-align:center;
+}
+
+#storico-list div.archive-row{
+    margin:3px 0;
+    display:flex;
+    align-items:center;
+    gap:5px;
+}
+
+#storico-list span{
+    flex:1;
+    font-weight:bold;
+    color:#1a73e8;
+}
+
+#storico-list button{
+    padding:5px 10px;
+    border-radius:5px;
+    border:none;
+    cursor:pointer;
+    background:#1a73e8;
+    color:white;
+}
+
+#loading-msg {
+    text-align:center;
+    margin:10px 0;
+    color:#555;
+}
+
+.detail-row { margin-bottom:10px; }
+</style>
+
+<!-- Librerie -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
+  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
+  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "campinato-tresette-a-perdere",
+  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
+  messagingSenderId: "105475040052",
+  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
+};
+
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.database();
+
+/* ===== MOSTRA STORICO ===== */
+function mostraStorico(){
+    const list = document.getElementById("storico-list");
+    list.innerHTML = '<div id="loading-msg">Caricamento storico...</div>';
+    const filtro = document.getElementById("searchData").value.trim().toLowerCase();
+
+    db.ref("archivio").once("value").then(snap=>{
+        const archivi = snap.val()||{};
+        let html = "";
+        Object.keys(archivi).sort().reverse().forEach(d=>{
+            if(filtro && !d.toLowerCase().includes(filtro)) return;
+
+            html += `<div id="row-${d}" class="archive-row">
+                <span>Partita di ${d.replace(/-/g," ")}</span>
+                <button id="btn-${d}" onclick="visualizzaArchivio('${d}')">Visualizza</button>
+                <button onclick="esportaArchivio('${d}')">⬇ Excel</button>
+                <button onclick="esportaArchivioPDF('${d}')">⬇ PDF</button>
+            </div>`;
+        });
+        list.innerHTML = html || '<div id="loading-msg">Nessun storico disponibile</div>';
+    });
+}
+
+/* ===== VISUALIZZA / NASCONDI DETTAGLIO ===== */
+function visualizzaArchivio(data){
+    const row = document.getElementById(`row-${data}`);
+    let detailDiv = document.getElementById(`detail-${data}`);
+
+    if(detailDiv){
+        detailDiv.remove();
+        document.getElementById(`btn-${data}`).textContent = "Visualizza";
+        return;
+    }
+
+    document.querySelectorAll(".detail-row").forEach(d=>d.remove());
+    document.querySelectorAll("#storico-list button").forEach(b=>{
+        if(b.id.startsWith("btn-")) b.textContent = "Visualizza";
+    });
+
+    detailDiv = document.createElement("div");
+    detailDiv.id = `detail-${data}`;
+    detailDiv.className = "detail-row";
+    detailDiv.innerHTML = '<div id="loading-msg">Caricamento...</div>';
+    row.insertAdjacentElement("afterend", detailDiv);
+
+    document.getElementById(`btn-${data}`).textContent = "Nascondi";
+
+    db.ref("archivio/"+data).once("value").then(snap=>{
+        const tables = snap.val()?.tables || {};
+        if(Object.keys(tables).length===0){
+            detailDiv.innerHTML='<div id="loading-msg">Nessun tavolo disponibile</div>';
+            return;
+        }
+
+        let html='<div class="tables-grid">';
+        Object.values(tables).forEach(t=>{
+            let arr = Object.values(t.players || []);
+            html+=`<div class="table"><b>${t.name}</b>`;
+
+            if(arr.length===0){
+                html+='<p>Nessun giocatore</p>';
+            } else {
+                arr.sort((a,b)=>(a.score||0)-(b.score||0));
+                arr.forEach((p,i)=>{
+                    html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
+                        <span class="player-name">${i+1}. ${p.name}</span>
+                        <span class="dots"></span>
+                        <span class="player-score">${p.score}</span>
+                    </div>`;
+                });
+
+                const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
+                if(maxHands>0){
+                    html+="<div class='hands-history'><table><tr><th>Mano</th>";
+                    arr.forEach(p=>html+=`<th>${p.name}</th>`);
+                    html+="</tr>";
+                    for(let i=0;i<maxHands;i++){
+                        html+=`<tr><td>${i+1}</td>`;
+                        arr.forEach(p=>html+=`<td>${p.playerHistory?.[i]??"-"}</td>`);
+                        html+="</tr>";
+                    }
+                    html+="</table></div>";
+                }
+            }
+
+            html+="</div>";
+        });
+        html+="</div>";
+        detailDiv.innerHTML = html;
+    });
+}
+
+/* ===== EXPORT EXCEL ===== */
+function esportaArchivio(data){
+    db.ref("archivio/"+data).once("value").then(snap=>{
+        const tables = snap.val()?.tables || {};
+        let rows = [];
+        let maxHands = 0;
+
+        Object.values(tables).forEach(t=>{
+            Object.values(t.players||{}).forEach(p=>{
+                if(p.playerHistory) maxHands = Math.max(maxHands, p.playerHistory.length);
+            });
+        });
+
+        let headers = ["Tavolo","Giocatore","Punti"];
+        for(let i=1;i<=maxHands;i++) headers.push(`Mano ${i}`);
+        rows.push(headers);
+
+        Object.values(tables).forEach(t=>{
+            Object.values(t.players||{}).forEach(p=>{
+                let riga = [t.name, p.name, p.score];
+                for(let i=0;i<maxHands;i++){
+                    riga.push(p.playerHistory?.[i] ?? "");
+                }
+                rows.push(riga);
+            });
+        });
+
+        if(rows.length === 1){
+            alert("Nessun dato disponibile");
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, "Storico");
+        XLSX.writeFile(wb, `storico_${data}.xlsx`);
+    });
+}
+
+/* ===== EXPORT PDF ===== */
+function esportaArchivioPDF(data){
+    db.ref("archivio/"+data).once("value").then(snap=>{
+        const tables = snap.val()?.tables || {};
+        if(Object.keys(tables).length===0){ alert("Nessun dato disponibile"); return; }
+
+        let html = '<div class="tables-grid">';
+        Object.values(tables).forEach(t=>{
+            let arr = Object.values(t.players || []);
+            html+=`<div class="table"><b>${t.name}</b>`;
+            if(arr.length===0){
+                html+='<p>Nessun giocatore</p>';
+            } else {
+                arr.sort((a,b)=>(a.score||0)-(b.score||0));
+                arr.forEach((p,i)=>{
+                    html+=`<div class="player-row ${(p.score>=t.limit)?"eliminated":""}">
+                        <span class="player-name">${i+1}. ${p.name}</span>
+                        <span class="dots"></span>
+                        <span class="player-score">${p.score}</span>
+                    </div>`;
+                });
+                const maxHands = Math.max(...arr.map(p=>(p.playerHistory||[]).length));
+                if(maxHands>0){
+                    html+="<div class='hands-history'><table><tr><th>Mano</th>";
+                    arr.forEach(p=>html+=`<th>${p.name}</th>`);
+                    html+="</tr>";
+                    for(let i=0;i<maxHands;i++){
+                        html+=`<tr><td>${i+1}</td>`;
+                        arr.forEach(p=>html+=`<td>${p.playerHistory?.[i]??"-"}</td>`);
+                        html+="</tr>";
+                    }
+                    html+="</table></div>";
+                }
+            }
+            html+="</div>";
+        });
+        html+="</div>";
+
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.innerHTML = html;
+        document.body.appendChild(tempDiv);
+
+        html2canvas(tempDiv, { scale:2 }).then(canvas=>{
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p','pt','a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pdfWidth;
+            const imgHeight = canvas.height * pdfWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            heightLeft -= pdfHeight;
+
+            while(heightLeft > 0){
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pdfHeight;
+            }
+
+            pdf.save(`storico_${data}.pdf`);
+            document.body.removeChild(tempDiv);
+        });
+    });
+}
+
+document.addEventListener("DOMContentLoaded", ()=>mostraStorico());
+</script>
+</head>
+
+<body>
+<div class="card">
+<h2>Storico Partite</h2>
+<input type="text" id="searchData" placeholder="🔍 Filtra data..." oninput="mostraStorico()">
+<div id="storico-list"></div>
+</div>
+</body>
+</html>
