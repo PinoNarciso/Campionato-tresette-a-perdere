@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Admin Tavoli Tressette</title>
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- Firebase -->
@@ -11,283 +10,331 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="firebase.js"></script>
 
-<!-- Excel -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <style>
 * { box-sizing: border-box; }
+body { font-family: Arial; background: #f0f2f5; margin:0; display:flex; justify-content:center; }
+.container { max-width:600px; width:100%; padding:10px; }
+.card { background:white; padding:15px; border-radius:10px; margin-bottom:20px; text-align:center; }
+input, button { width:100%; padding:10px; margin-bottom:10px; }
+button { background:#3498db; color:white; border:none; cursor:pointer; }
+.actions { display:flex; gap:5px; }
+.actions button { flex:1; }
 
-body {
-  font-family: Arial;
-  background: #f0f2f5;
-  margin: 0;
-  display: flex;
-  justify-content: center;
-}
+#playersContainer { max-height:250px; overflow-y:auto; border:1px solid #ccc; border-radius:5px; }
+.player-item { display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; cursor:pointer; }
+.player-item.selected { background:#eaf4ff; }
+.player-order { background:#3498db; color:white; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:0.8em; }
 
-.container {
-  max-width: 550px;
-  width: 100%;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+.players-list { list-style:none; padding:0; margin:0 auto; text-align:left; }
 
-.card {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  width: 100%;
-  text-align: center;
-}
-
-input, button {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-button {
-  background: #3498db;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-.actions {
-  display: flex;
-  gap: 5px;
-}
-
-.actions button {
-  flex: 1;
-}
-
-#tables {
-  width: 100%;
-}
-
-/* Lista giocatori */
-#playersContainer {
-  max-height: 250px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-.player-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-}
-
-.player-item.selected {
-  background: #eaf4ff;
-}
-
-.player-order {
-  background: #3498db;
-  color: white;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8em;
-}
-
-/* Lista tavoli */
-.players-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 auto;   /* mantiene centrata la lista nella card */
-  max-width: 90%;   /* larghezza contenuta */
-  text-align: left; /* allinea nomi a sinistra */
-}
+#loginContainer { margin-top:100px; }
+#loginError { color:red; margin-top:5px; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-
-<div class="card">
-<h2>Crea / Modifica Tavolo</h2>
-
-<input id="name" value="Tavolo 1">
-<input type="file" id="fileInput">
-<div id="playersContainer"></div>
-<input id="limit" type="number" value="81">
-<input id="winners" type="number" value="3">
-<input id="password" type="password">
-<button onclick="saveTable()">Salva Tavolo</button>
+<!-- LOGIN -->
+<div class="container" id="loginContainer">
+  <div class="card">
+    <h3>Login Admin</h3>
+    <input type="password" id="adminPassword" placeholder="Inserisci password" onkeydown="if(event.key==='Enter'){login();}">
+    <button onclick="login()">Accedi</button>
+    <div id="loginError"></div>
+  </div>
 </div>
 
-<div class="card">
-<h3>Tavoli creati</h3>
-<div id="tables"></div>
+<!-- CONTENUTO -->
+<div class="container" id="mainContent" style="display:none;">
+
+  <!-- HEADER -->
+<div style="display:flex; justify-content:flex-end; gap:5px; margin-bottom:10px;">
+  <button onclick="togglePasswordBox()">Cambia Password Accesso</button>
+  <button onclick="logout()">Logout</button>
 </div>
+
+  <!-- CAMBIO PASSWORD (NASCOSTO) -->
+  <div class="card" id="passwordBox" style="display:none;">
+    <h3>Cambia Password Admin</h3>
+    <input type="password" id="newAdminPassword" placeholder="Nuova password">
+    <button onclick="changeAdminPassword()">Salva Nuova Password</button>
+    <div id="passChangeMsg" style="margin-top:5px;"></div>
+  </div>
+
+  <!-- GIOCATORI -->
+  <div class="card">
+    <h3>Gestione Giocatori</h3>
+    <input id="searchPlayer" placeholder="Cerca giocatore..." oninput="filterPlayers()">
+    <div style="display:flex; gap:5px;">
+      <input id="newPlayer" placeholder="Nome giocatore">
+      <button onclick="addPlayer()">Inserisci Nuovo Giocatore</button>
+    </div>
+    <div id="playersContainer"></div>
+  </div>
+
+  <!-- TAVOLO -->
+  <div class="card">
+    <h2>Crea / Modifica Tavolo</h2>
+    <input id="name" value="Tavolo 1">
+    <input id="limit" type="number" value="81">
+    <input id="winners" type="number" value="3">
+    <input id="password" type="password" placeholder="Password admin">
+    <button onclick="saveTable()">Salva Tavolo</button>
+  </div>
+
+  <!-- TAVOLI -->
+  <div class="card">
+    <h3>Tavoli creati</h3>
+    <div id="tables"></div>
+    <button onclick="goToStorico()">Vai a Storico Admin</button>
+  </div>
 
 </div>
 
 <script>
-// ===== VARIABILI =====
 let editingId = null;
 let selectedOrder = [];
-const playersContainer = document.getElementById("playersContainer");
-const tablesDiv = document.getElementById("tables");
+let allPlayers = [];
+let editingPlayerId = null;
 
-// ===== POPOLA GIOCATORI =====
-function populatePlayers(playersArray){
-  playersContainer.innerHTML = "";
-  selectedOrder = [];
+// LOGIN
+function login(){
+  const input = document.getElementById("adminPassword").value;
+  const errorDiv = document.getElementById("loginError");
 
-  playersArray.forEach(nome => {
-    const div = document.createElement("div");
-    div.className = "player-item";
-
-    const name = document.createElement("div");
-    name.textContent = nome;
-
-    const order = document.createElement("div");
-    order.className = "player-order";
-    order.style.display = "none";
-
-    div.appendChild(name);
-    div.appendChild(order);
-
-    div.onclick = () => {
-      const i = selectedOrder.indexOf(nome);
-      if(i === -1) selectedOrder.push(nome);
-      else selectedOrder.splice(i,1);
-      aggiornaUI();
-    };
-
-    playersContainer.appendChild(div);
-  });
-}
-
-// ===== AGGIORNA UI =====
-function aggiornaUI(){
-  Array.from(playersContainer.children).forEach(item => {
-    const nome = item.firstChild.textContent;
-    const orderBox = item.lastChild;
-    const idx = selectedOrder.indexOf(nome);
-
-    if(idx !== -1){
-      item.classList.add("selected");
-      orderBox.style.display = "flex";
-      orderBox.textContent = idx + 1;
+  db.ref("admin/password").once("value").then(snap => {
+    const adminPass = snap.val();
+    if(input === adminPass){
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("mainContent").style.display = "block";
+      initPage();
     } else {
-      item.classList.remove("selected");
-      orderBox.style.display = "none";
+      errorDiv.textContent = "Password errata!";
     }
   });
 }
 
-// ===== CARICA EXCEL =====
-fileInput.onchange = function(e){
-  const file = e.target.files[0];
-  if(!file) return;
+// LOGOUT
+function logout(){
+  document.getElementById("mainContent").style.display = "none";
+  document.getElementById("loginContainer").style.display = "block";
+  document.getElementById("adminPassword").value = "";
+  document.getElementById("loginError").textContent = "";
+  editingId = null;
+  selectedOrder = [];
+}
 
-  const reader = new FileReader();
-  reader.onload = function(evt){
-    const data = new Uint8Array(evt.target.result);
-    const wb = XLSX.read(data, {type:'array'});
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-    const arr = [];
-    json.forEach(r => { if(r.Giocatore) arr.push(String(r.Giocatore)); });
-    localStorage.setItem("lastPlayers", JSON.stringify(arr));
-    populatePlayers(arr);
-  };
-  reader.readAsArrayBuffer(file);
-};
+// TOGGLE PASSWORD BOX
+function togglePasswordBox(){
+  const box = document.getElementById("passwordBox");
+  box.style.display = (box.style.display === "none") ? "block" : "none";
+}
 
-// ===== AUTOLOAD =====
-window.onload = () => {
-  const p = localStorage.getItem("lastPlayers");
-  if(p) populatePlayers(JSON.parse(p));
-};
+// CAMBIO PASSWORD
+function changeAdminPassword() {
+  const newPass = document.getElementById("newAdminPassword").value.trim();
+  const msgDiv = document.getElementById("passChangeMsg");
 
-// ===== SALVA TAVOLO =====
-function saveTable(){
-  if(selectedOrder.length === 0){ alert("Seleziona giocatori"); return; }
+  if(!newPass) {
+    msgDiv.style.color = "red";
+    msgDiv.textContent = "Inserisci una nuova password!";
+    return;
+  }
 
-  const id = editingId || ("table_" + Date.now());
-  const nome = document.getElementById("name").value;
-  const limitVal = Number(document.getElementById("limit").value);
-  const winnersVal = Number(document.getElementById("winners").value);
-  const passwordVal = document.getElementById("password").value;
-
-  db.ref("tables/"+id).once("value").then(snap => {
-    const old = snap.val() || {};
-
-    db.ref("tables/"+id).set({
-      name: nome || "Tavolo",
-      players: selectedOrder.map(p => String(p)),
-      limit: limitVal || 81,
-      winners: winnersVal || 3,
-      password: passwordVal || "",
-      game: old.game || null,
-      editor: old.editor || null
+  db.ref("admin/password").set(newPass)
+    .then(() => {
+      msgDiv.style.color = "green";
+      msgDiv.textContent = "Password aggiornata!";
+      document.getElementById("newAdminPassword").value = "";
+    })
+    .catch(() => {
+      msgDiv.style.color = "red";
+      msgDiv.textContent = "Errore!";
     });
+}
 
-    editingId = null;
-    selectedOrder = [];
-    aggiornaUI();
-    alert("Tavolo salvato!");
+// INIT
+function initPage(){
+  loadPlayersFromDB();
+  loadTables();
+}
+
+// GIOCATORI
+function loadPlayersFromDB(){
+  db.ref("players").on("value", snap => {
+    const data = snap.val() || {};
+    allPlayers = Object.entries(data).map(([id, p]) => ({ id, name: p.name }));
+    renderPlayers(allPlayers);
   });
 }
 
-// ===== ELIMINA =====
-function deleteTable(id){
-  if(confirm("Eliminare?")){ db.ref("tables/"+id).remove(); }
+function renderPlayers(list){
+  const container = document.getElementById("playersContainer");
+  container.innerHTML = "";
+
+  list.forEach(player => {
+    const div = document.createElement("div");
+    div.className = "player-item";
+
+    const name = document.createElement("div");
+    name.textContent = player.name;
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex"; actions.style.gap = "5px";
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏️";
+    editBtn.onclick = e => { e.stopPropagation(); editPlayer(player); };
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "🗑️";
+    delBtn.onclick = e => { e.stopPropagation(); deletePlayer(player.id); };
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
+    const order = document.createElement("div");
+    order.className="player-order";
+    order.style.display="none";
+
+    div.appendChild(name);
+    div.appendChild(actions);
+    div.appendChild(order);
+
+    div.onclick = () => {
+      const i = selectedOrder.indexOf(player.name);
+      if(i===-1) selectedOrder.push(player.name);
+      else selectedOrder.splice(i,1);
+      aggiornaUI();
+    };
+
+    container.appendChild(div);
+  });
+
+  aggiornaUI();
 }
 
-// ===== MODIFICA =====
+function aggiornaUI(){
+  const container = document.getElementById("playersContainer");
+  Array.from(container.children).forEach(item => {
+    const nome = item.firstChild.textContent;
+    const orderBox = item.lastChild;
+    const idx = selectedOrder.indexOf(nome);
+    if(idx !== -1){
+      item.classList.add("selected");
+      orderBox.style.display="flex";
+      orderBox.textContent=idx+1;
+    } else {
+      item.classList.remove("selected");
+      orderBox.style.display="none";
+    }
+  });
+}
+
+function addPlayer(){
+  const nome = document.getElementById("newPlayer").value.trim();
+  if(!nome) return alert("Inserisci nome");
+  if(allPlayers.some(p=>p.name.toLowerCase()===nome.toLowerCase()))
+    return alert("Giocatore già esistente");
+
+  const id = editingPlayerId || ("player_"+Date.now());
+  db.ref("players/"+id).set({name:nome});
+
+  document.getElementById("newPlayer").value="";
+  editingPlayerId=null;
+}
+
+function editPlayer(player){
+  document.getElementById("newPlayer").value=player.name;
+  editingPlayerId=player.id;
+}
+
+function deletePlayer(id){
+  if(confirm("Eliminare giocatore?"))
+    db.ref("players/"+id).remove();
+}
+
+function filterPlayers(){
+  const text = document.getElementById("searchPlayer").value.toLowerCase();
+  renderPlayers(allPlayers.filter(p => p.name.toLowerCase().includes(text)));
+}
+
+// TAVOLI
+function saveTable(){
+  if(selectedOrder.length===0){
+    alert("Seleziona giocatori");
+    return;
+  }
+
+  const id = editingId || ("table_"+Date.now());
+
+  db.ref("tables/"+id).set({
+    name: document.getElementById("name").value,
+    players: selectedOrder.map(p=>({name:p})),
+    limit: Number(document.getElementById("limit").value),
+    winners: Number(document.getElementById("winners").value),
+    password: document.getElementById("password").value
+  });
+
+  editingId=null;
+  selectedOrder=[];
+  aggiornaUI();
+  alert("Tavolo salvato!");
+}
+
+function loadTables(){
+  const div = document.getElementById("tables");
+
+  db.ref("tables").on("value", snap => {
+    const tables = snap.val() || {};
+    div.innerHTML = "";
+
+    for(let id in tables){
+      const t = tables[id];
+
+      const list = (t.players||[])
+        .map((p,i)=>`<li>${i+1}. ${p.name}</li>`)
+        .join("");
+
+      div.innerHTML += `
+        <div class="card">
+          <b>${t.name}</b>
+          <ul class="players-list">${list}</ul>
+          <div>Limite: ${t.limit} | Vincitori: ${t.winners}</div>
+          <div class="actions">
+            <button onclick="editTable('${id}')">Modifica</button>
+            <button onclick="deleteTable('${id}')">Elimina</button>
+          </div>
+        </div>`;
+    }
+  });
+}
+
 function editTable(id){
-  db.ref("tables/"+id).once("value").then(snap => {
+  db.ref("tables/"+id).once("value").then(snap=>{
     const t = snap.val();
-    if(!t) return;
-    editingId = id;
-    document.getElementById("name").value = t.name || "";
-    document.getElementById("limit").value = t.limit || 81;
-    document.getElementById("winners").value = t.winners || 3;
-    document.getElementById("password").value = t.password || "";
-    selectedOrder = (t.players || []).map(p => typeof p === "object" ? String(p.name || "") : String(p));
+    editingId=id;
+
+    document.getElementById("name").value=t.name;
+    document.getElementById("limit").value=t.limit;
+    document.getElementById("winners").value=t.winners;
+    document.getElementById("password").value=t.password;
+
+    selectedOrder=(t.players||[]).map(p=>p.name);
     aggiornaUI();
+
     scrollTo(0,0);
   });
 }
 
-// ===== VISUALIZZA =====
-db.ref("tables").on("value", snap => {
-  const tables = snap.val() || {};
-  tablesDiv.innerHTML = "";
-  for(let id in tables){
-    const t = tables[id];
-    const list = (t.players || []).map((p,idx) => {
-      let nome = typeof p === "object" ? p.name : p;
-      return `<li>${idx+1}. ${nome}</li>`;
-    }).join("");
-    tablesDiv.innerHTML += `
-      <div class="card">
-        <b>${t.name}</b>
-        <ul class="players-list">${list}</ul>
-        <div>Limite: ${t.limit} | Vincitori: ${t.winners}</div>
-        <div class="actions">
-          <button onclick="editTable('${id}')">Modifica</button>
-          <button onclick="deleteTable('${id}')">Elimina</button>
-        </div>
-      </div>`;
-  }
-});
+function deleteTable(id){
+  if(confirm("Eliminare?"))
+    db.ref("tables/"+id).remove();
+}
+
+function goToStorico(){
+  window.location.href="storicoAdmin.html";
+}
 </script>
 
 </body>
