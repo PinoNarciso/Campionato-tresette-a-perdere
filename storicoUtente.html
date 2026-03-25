@@ -320,15 +320,26 @@ function esportaArchivioPDF(data){
     });
 }
 
+function goToTables(){
+    window.location.href = "index.html";
+}
+
 document.addEventListener("DOMContentLoaded", ()=>mostraStorico());
+
 </script>
 </head>
 
 <body>
 <div class="card">
 <h2>Storico Partite</h2>
+
+<div style="text-align:center; margin-bottom:10px;">
+    <button onclick="goToTables()" style="background:#1a73e8;color:white;padding:10px 15px;border:none;border-radius:6px;cursor:pointer;">
+        ⬅️ Torna ai Tavoli
+    </button>
+</div>
+
 <input type="text" id="searchData" placeholder="🔍 Filtra data..." oninput="mostraStorico()">
 <div id="storico-list"></div>
-</div>
-</body>
+</div></body>
 </html>

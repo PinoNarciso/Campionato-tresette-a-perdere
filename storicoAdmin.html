@@ -35,10 +35,13 @@ h2 { text-align:center; color:#1a73e8; }
 <!-- TAVOLI LIVE -->
 <div id="tables" class="tables-grid"></div>
 
+
 <!-- PULSANTI SOTTO LE TABELLE -->
 <div class="top-buttons">
     <button style="background:#34a853;color:white;" onclick="archiviaDati()">📦 Archivia</button>
     <button style="background:#fbbc05;" onclick="mostraStorico()">📊 Storico</button>
+    <button style="background:#1a73e8;color:white;" onclick="goToTables()">⬅️ Vai ai Tavoli</button>
+    <button style="background:#6c757d;color:white;" onclick="goToAdmin()">⚙️ Torna Admin</button>
 </div>
 
 <!-- STORICO -->
@@ -246,6 +249,15 @@ function esportaArchivio(data){
         const blob=new Blob([csv]); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="storico.csv"; a.click();
     });
 }
+
+function goToTables(){
+    window.location.href = "index.html";
+}
+
+function goToAdmin(){
+    window.location.href = "admin.html";
+}
+
 </script>
 </body>
 </html>

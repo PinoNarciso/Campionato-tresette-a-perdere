@@ -13,6 +13,9 @@
 --success:#27ae60;
 --accent:#3498db;
 --info:#34b7f1;
+.btn-back{
+background:var(--primary);
+
 }
 
 body{
@@ -192,6 +195,7 @@ margin:20px 0;
 <div style="margin-top:15px">
 <button class="btn-share" onclick="shareResults()">📤 Condividi risultati</button>
 <button class="btn-undo" onclick="undoLast()">↩️ Annulla ultima mano</button>
+<button class="btn-back" onclick="goToTables()">⬅️ Torna ai Tavoli</button>
 </div>
 </div>
 
@@ -506,6 +510,11 @@ function updateDealerAfterRound(){
     do{ next=(next+1)%players.length } while(!players[next].active);
     dealerIndex=next;
 }
+
+function goToTables(){
+    window.location.href = "index.html";
+}
+
 </script>
 
 </body>
