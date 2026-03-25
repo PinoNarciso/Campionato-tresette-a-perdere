@@ -12,18 +12,68 @@
 
 <style>
 * { box-sizing: border-box; }
-body { font-family: Arial; background: #f0f2f5; margin:0; display:flex; justify-content:center; }
-.container { max-width:600px; width:100%; padding:10px; }
-.card { background:white; padding:15px; border-radius:10px; margin-bottom:20px; text-align:center; }
-input, button { width:100%; padding:10px; margin-bottom:10px; }
-button { background:#3498db; color:white; border:none; cursor:pointer; }
-.actions { display:flex; gap:5px; }
+body {
+    font-family: Arial;
+    background: #f0f2f5;
+    margin:0;
+    display:flex;
+    justify-content:center;
+}
+.container {
+    max-width:600px;
+    width:100%;
+    padding:10px;
+}
+.card {
+    background:white;
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:20px;
+    text-align:center;
+}
+input, button {
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+}
+button {
+    background:#3498db;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+.actions {
+    display:flex;
+    gap:5px;
+}
 .actions button { flex:1; }
 
-#playersContainer { max-height:250px; overflow-y:auto; border:1px solid #ccc; border-radius:5px; }
-.player-item { display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee; cursor:pointer; }
+#playersContainer {
+    max-height:250px;
+    overflow-y:auto;
+    border:1px solid #ccc;
+    border-radius:5px;
+}
+.player-item {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px;
+    border-bottom:1px solid #eee;
+    cursor:pointer;
+}
 .player-item.selected { background:#eaf4ff; }
-.player-order { background:#3498db; color:white; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:0.8em; }
+.player-order {
+    background:#3498db;
+    color:white;
+    border-radius:50%;
+    width:26px;
+    height:26px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.8em;
+}
 
 #loginContainer { margin-top:100px; }
 #loginError { color:red; margin-top:5px; }
@@ -51,6 +101,12 @@ button { background:#3498db; color:white; border:none; cursor:pointer; }
     <button onclick="logout()">Logout</button>
   </div>
 
+  <!-- NUOVI PULSANTI SPOSTATI QUI -->
+  <div style="display:flex; justify-content:flex-end; gap:5px; margin-bottom:10px;">
+    <button onclick="goToStorico()">Storico Admin</button>
+    <button onclick="goToTavoli()">Torna ai Tavoli</button>
+  </div>
+
   <!-- CAMBIO PASSWORD -->
   <div class="card" id="passwordBox" style="display:none;">
     <h3>Cambia Password Admin</h3>
@@ -72,10 +128,6 @@ button { background:#3498db; color:white; border:none; cursor:pointer; }
 
     <input id="password" type="password" placeholder="Password tavolo">
 
-
-
-
-
     <input id="searchPlayer" placeholder="🔍 Cerca..." oninput="filterPlayers()">
 
     <div style="display:flex; gap:5px;">
@@ -94,7 +146,6 @@ button { background:#3498db; color:white; border:none; cursor:pointer; }
   <div class="card">
     <h3>Tavoli creati</h3>
     <div id="tables"></div>
-    <button onclick="goToStorico()">Vai a Storico Admin</button>
   </div>
 
 </div>
@@ -141,6 +192,15 @@ function changeAdminPassword(){
   });
 }
 
+// NAVIGAZIONE
+function goToStorico(){
+  location.href="storicoAdmin.html";
+}
+
+function goToTavoli(){
+  location.href="index.html";
+}
+
 // INIT
 function initPage(){
   loadPlayersFromDB();
@@ -168,7 +228,8 @@ function renderPlayers(list){
     name.textContent = player.name;
 
     const actions = document.createElement("div");
-    actions.style.display = "flex"; actions.style.gap = "5px";
+    actions.style.display = "flex";
+    actions.style.gap = "5px";
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️";
@@ -202,7 +263,6 @@ function renderPlayers(list){
   aggiornaUI();
 }
 
-
 function aggiornaUI(){
   Array.from(playersContainer.children).forEach(item=>{
     const nome=item.firstChild.textContent;
@@ -222,10 +282,10 @@ function aggiornaUI(){
 
 function addPlayer(){
   const nome = newPlayer.value.trim();
-  
+
   if(!nome){
-    alert("Il Campo nome del giocatore è vuoto!"); // messaggio se campo vuoto
-    return; // blocca l'inserimento
+    alert("Il Campo nome del giocatore è vuoto!");
+    return;
   }
 
   const id = editingPlayerId || ("player_" + Date.now());
@@ -235,20 +295,16 @@ function addPlayer(){
   editingPlayerId = null;
 }
 
-// Modifica giocatore
 function editPlayer(player){
   document.getElementById("newPlayer").value=player.name;
   editingPlayerId=player.id;
 }
 
-// Elimina giocatore
 function deletePlayer(id){
   if(confirm("Eliminare giocatore?"))
     db.ref("players/"+id).remove();
 }
 
-
-// Filtra giocatori
 function filterPlayers(){
   const t=searchPlayer.value.toLowerCase();
   renderPlayers(allPlayers.filter(p=>p.name.toLowerCase().includes(t)));
@@ -280,8 +336,7 @@ function saveTable(){
     selectedOrder = [];
     aggiornaUI();
 
-    // Reset campi tavolo
-    nameEl.value="Tavolo 1";
+    nameEl.value="Tavolo 1 (Primo Turno)";
     limitEl.value=81;
     winnersEl.value=3;
     passwordEl.value="";
@@ -289,8 +344,7 @@ function saveTable(){
 
     alert("Salvato!");
   })
-  .catch(err=>{
-    console.error(err);
+  .catch(()=>{
     alert("Errore salvataggio tavolo");
   });
 }
@@ -304,8 +358,9 @@ function loadTables(){
     for(let id in data){
       const t = data[id];
 
-      // Lista giocatori con numeri progressivi, senza puntini, allineati a sinistra
-      const list = (t.players||[]).map((p,i) => `<div style="text-align:left;">${i+1}. ${p.name}</div>`).join("");
+      const list = (t.players||[])
+        .map((p,i) => `<div style="text-align:left;">${i+1}. ${p.name}</div>`)
+        .join("");
 
       tables.innerHTML += `
       <div class="card">
@@ -320,7 +375,7 @@ function loadTables(){
     }
   });
 }
-// MODIFICA TAVOLO
+
 function editTable(id){
   db.ref("tables/"+id).once("value").then(snap=>{
     const t=snap.val();
@@ -339,15 +394,9 @@ function editTable(id){
   });
 }
 
-// ELIMINA TAVOLO
 function deleteTable(id){
   if(confirm("Eliminare?"))
     db.ref("tables/"+id).remove();
-}
-
-// STORICO
-function goToStorico(){
-  location.href="storicoAdmin.html";
 }
 </script>
 
