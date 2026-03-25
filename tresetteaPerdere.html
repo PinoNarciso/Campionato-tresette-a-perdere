@@ -84,28 +84,47 @@ margin:10px 0;
 .sum-err{background:#ffebee;color:red;}
 
 table{
-width:100%;
-border-collapse:collapse;
-table-layout:fixed;
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed; /* le colonne rispettano le larghezze impostate */
 }
 
-th,td{
-padding:6px;
-font-size:0.8rem;
-text-align:center;
-border-bottom:1px solid #eee;
+th, td{
+    padding:6px;
+    font-size:0.8rem;
+    border-bottom:1px solid #eee;
 }
 
-th:nth-child(2),td:nth-child(2){
-text-align:left;
-width:90px;
+/* Colonne specifiche */
+th:nth-child(1), td:nth-child(1){ 
+    width:30px;       /* Colonna N */
+    text-align:center;
 }
 
+th:nth-child(2), td:nth-child(2){ 
+    width:150px;      /* Colonna Nome */
+    text-align:left;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+th:nth-child(3), td:nth-child(3){ 
+    width:50px;       /* Colonna Punti */
+    text-align:center;
+}
+
+th:nth-child(4), td:nth-child(4){ 
+    width:auto;       /* Colonna Storico prende il resto dello spazio */
+    text-align:left;
+}
+
+/* Mantieni scroll orizzontale per le mani nella colonna storico */
 .history-scroll-cell{
-display:flex;
-gap:8px;
-overflow-x:auto;
-padding:4px 0;
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:4px 0;
 }
 
 .badge-container{
@@ -148,7 +167,7 @@ margin:20px 0;
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
+<script src="firebase.js"></script>
 </head>
 <body>
 
@@ -180,21 +199,6 @@ margin:20px 0;
 <footer>© 2026 - Pino Narciso</footer>
 
 <script>
-// ===== firebaseConfig =====
-const firebaseConfig = {
-  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "campinato-tresette-a-perdere",
-  storageBucket: "campinato-tresette-a-perdere.firebasedastorage.app",
-  messagingSenderId: "105475040052",
-  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-};
-// ===== firebaseConfig =====
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
 let players=[], history=[], limit=81, tableName="", winners=1, dealerIndex=-1;
 
 window.onload = function(){ start(); }

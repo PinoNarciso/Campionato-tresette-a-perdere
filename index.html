@@ -134,7 +134,7 @@ p.empty {
     margin:20px 0;
 }
 
-/* Pulsante speciale Crea/Modifica tavoli */
+/* Pulsante speciale Crea/Modifica Tavoli + Storico */
 .btn-admin {
     background-color: #27ae60; /* verde brillante */
     color: white;
@@ -160,23 +160,7 @@ p.empty {
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "campinato-tresette-a-perdere",
-  storageBucket: "campinato-tresette-a-perdere.firebasestorage.app",
-  messagingSenderId: "105475040052",
-  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-};
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-const db = firebase.database();
-</script>
+<script src="firebase.js"></script>
 
 </head>
 <body>
@@ -184,10 +168,13 @@ const db = firebase.database();
 <div class="card">
     <h2>Tavoli disponibili</h2>
 
-    <!-- Pulsante Crea/Modifica tavoli -->
+    <!-- Pulsanti globali in cima -->
     <div style="text-align:center; margin-bottom:12px;">
         <button class="btn-admin" onclick="window.location.href='admin.html'">
-            Crea/Modifica tavoli
+            Crea/Modifica Tavoli
+        </button>
+        <button class="btn-admin" onclick="goToGlobalHistory()">
+            Storico
         </button>
     </div>
 
@@ -226,7 +213,6 @@ db.ref("tables").on("value", snap => {
             <div class="btn-container">
                 <button onclick="enterAdmin('${id}')">Segnapunti</button>
                 <button onclick="enterVisitor('${id}')">Vai al Tavolo</button>
-                <button onclick="enterHistory('${id}')">Storico</button>
             </div>
         `;
         tablesDiv.appendChild(div);
@@ -292,6 +278,7 @@ db.ref("tables").on("value", snap => {
     });
 });
 
+// Funzioni pulsanti
 function enterAdmin(id){
     db.ref(`tables/${id}`).once("value").then(snapshot => {
         const t = snapshot.val() || {};
@@ -316,13 +303,8 @@ function enterVisitor(id){
     });
 }
 
-function enterHistory(id){
-    db.ref(`tables/${id}`).once("value").then(snapshot => {
-        const t = snapshot.val() || {};
-        localStorage.setItem("tableID", id);
-        localStorage.setItem("tableName", t.name || "Tavolo");
-        window.location.href = "storicoUtente.html";
-    });
+function goToGlobalHistory(){
+    window.location.href = "storicoUtente.html";
 }
 </script>
 

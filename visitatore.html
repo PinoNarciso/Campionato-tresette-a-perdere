@@ -141,6 +141,7 @@ margin:20px 0;
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="firebase.js"></script>
 
 </head>
 <body>
@@ -174,22 +175,6 @@ margin:20px 0;
 <footer>© 2026 - Pino Narciso</footer>
 
 <script>
-
-// ===== firebaseConfig =====
-const firebaseConfig = {
-  apiKey: "AIzaSyAeZiPDG89tRz3QeFBhh3wWLkGtjoFGiXA",
-  authDomain: "campinato-tresette-a-perdere.firebaseapp.com",
-  databaseURL: "https://campinato-tresette-a-perdere-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "campinato-tresette-a-perdere",
-  storageBucket: "campinato-tresette-a-perdere.firebasedastorage.app",
-  messagingSenderId: "105475040052",
-  appId: "1:105475040052:web:631c46b7d47cd8b333bb61"
-};
-// ===== firebaseConfig =====
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
 let players=[], history=[], limit=81, tableName="", winners=1, dealerIndex=-1;
 
 window.onload = function(){ start(); }

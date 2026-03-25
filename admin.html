@@ -25,8 +25,6 @@ button { background:#3498db; color:white; border:none; cursor:pointer; }
 .player-item.selected { background:#eaf4ff; }
 .player-order { background:#3498db; color:white; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; font-size:0.8em; }
 
-.players-list { list-style:none; padding:0; margin:0 auto; text-align:left; }
-
 #loginContainer { margin-top:100px; }
 #loginError { color:red; margin-top:5px; }
 </style>
@@ -48,38 +46,48 @@ button { background:#3498db; color:white; border:none; cursor:pointer; }
 <div class="container" id="mainContent" style="display:none;">
 
   <!-- HEADER -->
-<div style="display:flex; justify-content:flex-end; gap:5px; margin-bottom:10px;">
-  <button onclick="togglePasswordBox()">Cambia Password Accesso</button>
-  <button onclick="logout()">Logout</button>
-</div>
+  <div style="display:flex; justify-content:flex-end; gap:5px; margin-bottom:10px;">
+    <button onclick="togglePasswordBox()">Cambia Password Accesso</button>
+    <button onclick="logout()">Logout</button>
+  </div>
 
-  <!-- CAMBIO PASSWORD (NASCOSTO) -->
+  <!-- CAMBIO PASSWORD -->
   <div class="card" id="passwordBox" style="display:none;">
     <h3>Cambia Password Admin</h3>
     <input type="password" id="newAdminPassword" placeholder="Nuova password">
     <button onclick="changeAdminPassword()">Salva Nuova Password</button>
-    <div id="passChangeMsg" style="margin-top:5px;"></div>
+    <div id="passChangeMsg"></div>
   </div>
 
-  <!-- GIOCATORI -->
+  <!-- CARD UNIFICATA -->
   <div class="card">
-    <h3>Gestione Giocatori</h3>
-    <input id="searchPlayer" placeholder="Cerca giocatore..." oninput="filterPlayers()">
+    <h2 id="formTitle">Crea Tavolo</h2>
+
+    <input id="name" placeholder="Nome tavolo" value="Tavolo 1 (Primo Turno)">
+
+    <div style="display:flex; gap:5px;">
+      <input id="limit" type="number" value="81" placeholder="Limite punti">
+      <input id="winners" type="number" value="3" placeholder="Vincitori">
+    </div>
+
+    <input id="password" type="password" placeholder="Password tavolo">
+
+
+
+
+
+    <input id="searchPlayer" placeholder="🔍 Cerca..." oninput="filterPlayers()">
+
     <div style="display:flex; gap:5px;">
       <input id="newPlayer" placeholder="Nome giocatore">
-      <button onclick="addPlayer()">Inserisci Nuovo Giocatore</button>
+      <button onclick="addPlayer()">Inserisci/Modifica Giocatore</button>
     </div>
-    <div id="playersContainer"></div>
-  </div>
 
-  <!-- TAVOLO -->
-  <div class="card">
-    <h2>Crea / Modifica Tavolo</h2>
-    <input id="name" value="Tavolo 1">
-    <input id="limit" type="number" value="81">
-    <input id="winners" type="number" value="3">
-    <input id="password" type="password" placeholder="Password admin">
-    <button onclick="saveTable()">Salva Tavolo</button>
+    <div id="playersContainer"></div>
+
+    <small>Clicca i giocatori per impostare l'ordine</small>
+
+    <button onclick="saveTable()">💾 Salva Tavolo</button>
   </div>
 
   <!-- TAVOLI -->
@@ -100,57 +108,37 @@ let editingPlayerId = null;
 // LOGIN
 function login(){
   const input = document.getElementById("adminPassword").value;
-  const errorDiv = document.getElementById("loginError");
 
   db.ref("admin/password").once("value").then(snap => {
-    const adminPass = snap.val();
-    if(input === adminPass){
-      document.getElementById("loginContainer").style.display = "none";
-      document.getElementById("mainContent").style.display = "block";
+    if(input === snap.val()){
+      document.getElementById("loginContainer").style.display="none";
+      document.getElementById("mainContent").style.display="block";
       initPage();
     } else {
-      errorDiv.textContent = "Password errata!";
+      document.getElementById("loginError").textContent="Password errata!";
     }
   });
 }
 
 // LOGOUT
 function logout(){
-  document.getElementById("mainContent").style.display = "none";
-  document.getElementById("loginContainer").style.display = "block";
-  document.getElementById("adminPassword").value = "";
-  document.getElementById("loginError").textContent = "";
-  editingId = null;
-  selectedOrder = [];
+  document.getElementById("mainContent").style.display="none";
+  document.getElementById("loginContainer").style.display="block";
 }
 
-// TOGGLE PASSWORD BOX
+// PASSWORD
 function togglePasswordBox(){
-  const box = document.getElementById("passwordBox");
-  box.style.display = (box.style.display === "none") ? "block" : "none";
+  passwordBox.style.display = passwordBox.style.display==="none"?"block":"none";
 }
 
-// CAMBIO PASSWORD
-function changeAdminPassword() {
-  const newPass = document.getElementById("newAdminPassword").value.trim();
-  const msgDiv = document.getElementById("passChangeMsg");
-
-  if(!newPass) {
-    msgDiv.style.color = "red";
-    msgDiv.textContent = "Inserisci una nuova password!";
-    return;
-  }
-
-  db.ref("admin/password").set(newPass)
-    .then(() => {
-      msgDiv.style.color = "green";
-      msgDiv.textContent = "Password aggiornata!";
-      document.getElementById("newAdminPassword").value = "";
-    })
-    .catch(() => {
-      msgDiv.style.color = "red";
-      msgDiv.textContent = "Errore!";
-    });
+function changeAdminPassword(){
+  const newPass = newAdminPassword.value.trim();
+  if(!newPass) return alert("Inserisci password");
+  db.ref("admin/password").set(newPass).then(()=>{
+    passChangeMsg.textContent="Aggiornata!";
+    passChangeMsg.style.color="green";
+    newAdminPassword.value="";
+  });
 }
 
 // INIT
@@ -161,9 +149,9 @@ function initPage(){
 
 // GIOCATORI
 function loadPlayersFromDB(){
-  db.ref("players").on("value", snap => {
-    const data = snap.val() || {};
-    allPlayers = Object.entries(data).map(([id, p]) => ({ id, name: p.name }));
+  db.ref("players").on("value", snap=>{
+    const data = snap.val()||{};
+    allPlayers = Object.entries(data).map(([id,p])=>({id,name:p.name}));
     renderPlayers(allPlayers);
   });
 }
@@ -214,13 +202,14 @@ function renderPlayers(list){
   aggiornaUI();
 }
 
+
 function aggiornaUI(){
-  const container = document.getElementById("playersContainer");
-  Array.from(container.children).forEach(item => {
-    const nome = item.firstChild.textContent;
-    const orderBox = item.lastChild;
-    const idx = selectedOrder.indexOf(nome);
-    if(idx !== -1){
+  Array.from(playersContainer.children).forEach(item=>{
+    const nome=item.firstChild.textContent;
+    const idx=selectedOrder.indexOf(nome);
+    const orderBox=item.lastChild;
+
+    if(idx!==-1){
       item.classList.add("selected");
       orderBox.style.display="flex";
       orderBox.textContent=idx+1;
@@ -232,108 +221,133 @@ function aggiornaUI(){
 }
 
 function addPlayer(){
-  const nome = document.getElementById("newPlayer").value.trim();
-  if(!nome) return alert("Inserisci nome");
-  if(allPlayers.some(p=>p.name.toLowerCase()===nome.toLowerCase()))
-    return alert("Giocatore già esistente");
+  const nome = newPlayer.value.trim();
+  
+  if(!nome){
+    alert("Il Campo nome del giocatore è vuoto!"); // messaggio se campo vuoto
+    return; // blocca l'inserimento
+  }
 
-  const id = editingPlayerId || ("player_"+Date.now());
-  db.ref("players/"+id).set({name:nome});
+  const id = editingPlayerId || ("player_" + Date.now());
+  db.ref("players/" + id).set({name: nome});
 
-  document.getElementById("newPlayer").value="";
-  editingPlayerId=null;
+  newPlayer.value = "";
+  editingPlayerId = null;
 }
 
+// Modifica giocatore
 function editPlayer(player){
   document.getElementById("newPlayer").value=player.name;
   editingPlayerId=player.id;
 }
 
+// Elimina giocatore
 function deletePlayer(id){
   if(confirm("Eliminare giocatore?"))
     db.ref("players/"+id).remove();
 }
 
+
+// Filtra giocatori
 function filterPlayers(){
-  const text = document.getElementById("searchPlayer").value.toLowerCase();
-  renderPlayers(allPlayers.filter(p => p.name.toLowerCase().includes(text)));
+  const t=searchPlayer.value.toLowerCase();
+  renderPlayers(allPlayers.filter(p=>p.name.toLowerCase().includes(t)));
 }
 
-// TAVOLI
+// SALVA TAVOLO
 function saveTable(){
+  const nameEl = document.getElementById("name");
+  const limitEl = document.getElementById("limit");
+  const winnersEl = document.getElementById("winners");
+  const passwordEl = document.getElementById("password");
+
   if(selectedOrder.length===0){
     alert("Seleziona giocatori");
     return;
   }
 
-  const id = editingId || ("table_"+Date.now());
+  const id = editingId || ("table_" + Date.now());
 
-  db.ref("tables/"+id).set({
-    name: document.getElementById("name").value,
-    players: selectedOrder.map(p=>({name:p})),
-    limit: Number(document.getElementById("limit").value),
-    winners: Number(document.getElementById("winners").value),
-    password: document.getElementById("password").value
+  db.ref("tables/" + id).set({
+    name: nameEl.value,
+    players: selectedOrder.map(p => ({ name: p })),
+    limit: Number(limitEl.value),
+    winners: Number(winnersEl.value),
+    password: passwordEl.value
+  })
+  .then(()=>{
+    editingId = null;
+    selectedOrder = [];
+    aggiornaUI();
+
+    // Reset campi tavolo
+    nameEl.value="Tavolo 1";
+    limitEl.value=81;
+    winnersEl.value=3;
+    passwordEl.value="";
+    document.getElementById("formTitle").textContent="Crea Tavolo";
+
+    alert("Salvato!");
+  })
+  .catch(err=>{
+    console.error(err);
+    alert("Errore salvataggio tavolo");
   });
-
-  editingId=null;
-  selectedOrder=[];
-  aggiornaUI();
-  alert("Tavolo salvato!");
 }
 
+// CARICA TAVOLI
 function loadTables(){
-  const div = document.getElementById("tables");
+  db.ref("tables").on("value", snap=>{
+    const data = snap.val() || {};
+    tables.innerHTML = "";
 
-  db.ref("tables").on("value", snap => {
-    const tables = snap.val() || {};
-    div.innerHTML = "";
+    for(let id in data){
+      const t = data[id];
 
-    for(let id in tables){
-      const t = tables[id];
+      // Lista giocatori con numeri progressivi, senza puntini, allineati a sinistra
+      const list = (t.players||[]).map((p,i) => `<div style="text-align:left;">${i+1}. ${p.name}</div>`).join("");
 
-      const list = (t.players||[])
-        .map((p,i)=>`<li>${i+1}. ${p.name}</li>`)
-        .join("");
-
-      div.innerHTML += `
-        <div class="card">
-          <b>${t.name}</b>
-          <ul class="players-list">${list}</ul>
-          <div>Limite: ${t.limit} | Vincitori: ${t.winners}</div>
-          <div class="actions">
-            <button onclick="editTable('${id}')">Modifica</button>
-            <button onclick="deleteTable('${id}')">Elimina</button>
-          </div>
-        </div>`;
+      tables.innerHTML += `
+      <div class="card">
+        <b>${t.name}</b>
+        <div>${list}</div>
+        <div>Limite: ${t.limit} | Vincitori: ${t.winners}</div>
+        <div class="actions">
+          <button onclick="editTable('${id}')">Modifica</button>
+          <button onclick="deleteTable('${id}')">Elimina</button>
+        </div>
+      </div>`;
     }
   });
 }
-
+// MODIFICA TAVOLO
 function editTable(id){
   db.ref("tables/"+id).once("value").then(snap=>{
-    const t = snap.val();
-    editingId=id;
+    const t=snap.val();
 
-    document.getElementById("name").value=t.name;
-    document.getElementById("limit").value=t.limit;
-    document.getElementById("winners").value=t.winners;
-    document.getElementById("password").value=t.password;
+    editingId=id;
+    name.value=t.name;
+    limit.value=t.limit;
+    winners.value=t.winners;
+    password.value=t.password;
 
     selectedOrder=(t.players||[]).map(p=>p.name);
     aggiornaUI();
 
+    document.getElementById("formTitle").textContent="Modifica Tavolo";
     scrollTo(0,0);
   });
 }
 
+// ELIMINA TAVOLO
 function deleteTable(id){
   if(confirm("Eliminare?"))
     db.ref("tables/"+id).remove();
 }
 
+// STORICO
 function goToStorico(){
-  window.location.href="storicoAdmin.html";
+  location.href="storicoAdmin.html";
 }
 </script>
 
