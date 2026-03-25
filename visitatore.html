@@ -52,12 +52,12 @@ margin-bottom:6px;
 cursor:pointer;
 }
 
-/* Nascondiamo i pulsanti di controllo gioco e gli input */
-.btn-cap, .btn-rete, .btn-undo, #confirm-btn, .score-in {
-    display: none !important;
-}
-
+.btn-cap{background:var(--warning);width:auto;padding:4px 8px;font-size:0.7rem;}
+.btn-rete{background:var(--info);width:auto;padding:4px 8px;font-size:0.7rem;}
+.btn-undo{background:#95a5a6;}
 .btn-share{background:var(--accent);}
+#confirm-btn{background:var(--danger);}
+#confirm-btn.ready{background:var(--success);}
 
 .player-row{
 display:flex;
@@ -73,32 +73,57 @@ border-left:4px solid #f39c12;
 }
 
 .sum-check{
-display: none; /* Nascondiamo il controllo somma */
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-table-layout:fixed;
-}
-
-th,td{
-padding:6px;
-font-size:0.8rem;
 text-align:center;
-border-bottom:1px solid #eee;
+font-weight:bold;
+padding:6px;
+border-radius:6px;
+margin:10px 0;
 }
 
-th:nth-child(2),td:nth-child(2){
-text-align:left;
-width:90px;
+.sum-ok{background:#e8f5e9;color:green;}
+.sum-err{background:#ffebee;color:red;}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed; /* le colonne rispettano le larghezze impostate */
 }
 
+th, td{
+    padding:6px;
+    font-size:0.8rem;
+    border-bottom:1px solid #eee;
+}
+
+/* Colonne specifiche */
+th:nth-child(1), td:nth-child(1){ 
+    width:30px;       /* Colonna N */
+    text-align:center;
+}
+
+th:nth-child(2), td:nth-child(2){ 
+    width:80px;      /* Colonna Nome */
+    text-align:left;
+    word-wrap:break-word;  /* va a capo se troppo lungo */
+    white-space:normal;    /* rimuove il no-wrap */
+}
+
+th:nth-child(3), td:nth-child(3){ 
+    width:30px;       /* Colonna Punti */
+    text-align:center;
+}
+
+th:nth-child(4), td:nth-child(4){ 
+    width:auto;       /* Colonna Storico prende il resto dello spazio */
+    text-align:left;
+}
+
+/* Mantieni scroll orizzontale per le mani nella colonna storico */
 .history-scroll-cell{
-display:flex;
-gap:8px;
-overflow-x:auto;
-padding:4px 0;
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:4px 0;
 }
 
 .badge-container{
@@ -142,7 +167,6 @@ margin:20px 0;
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="firebase.js"></script>
-
 </head>
 <body>
 
@@ -151,10 +175,9 @@ margin:20px 0;
 
 <div id="inputs-area"></div>
 
-<div id="sum-display" class="sum-check">Somma: 0 / 21</div>
+<div id="sum-display" class="sum-check sum-err">Somma: 0 / 21</div>
 
-<!-- Pulsante disabilitato visivamente tramite CSS sopra -->
-<button id="confirm-btn" disabled>Conferma Mano</button>
+<button id="confirm-btn" onclick="addRound()" disabled>Conferma Mano</button>
 
 <h3>Classifica e storico</h3>
 <table>
@@ -168,7 +191,7 @@ margin:20px 0;
 
 <div style="margin-top:15px">
 <button class="btn-share" onclick="shareResults()">📤 Condividi risultati</button>
-<!-- Il tasto undo è stato rimosso -->
+<button class="btn-undo" onclick="undoLast()">↩️ Annulla ultima mano</button>
 </div>
 </div>
 
@@ -234,56 +257,256 @@ function loadDataFromFirebase(data){
 
 function render(){
     const area = document.getElementById("inputs-area");
-    area.innerHTML="";
-    players.filter(p=>p.active).forEach(p=>{
-        const isDealer=(dealerIndex!=-1 && players[dealerIndex].id===p.id)?"leader":"";
-        area.innerHTML+=`
+    area.innerHTML = "";
+
+    // Controlla se la partita è finita
+    const gameOver = true; // sempre true per disabilitare tutti
+    // oppure gameOver = isGameOver(); se vuoi disabilitarli solo quando finisce
+
+    players.filter(p => p.active).forEach(p => {
+        const isDealer = (dealerIndex != -1 && players[dealerIndex].id === p.id) ? "leader" : "";
+        area.innerHTML += `
         <div class="player-row ${isDealer}">
-            <span>${p.name} ${isDealer?"★":""}</span>
+            <span>${p.name} ${isDealer ? "★" : ""}</span>
+            <div style="display:flex;gap:4px">
+                <input type="number" class="score-in" data-id="${p.id}" min="0" max="21" style="width:50px" ${gameOver ? "disabled" : ""}>
+                <button class="btn-rete" onclick="fillRete(${p.id})" ${gameOver ? "disabled" : ""}>RETE</button>
+                <button class="btn-cap" onclick="makeCappotto(${p.id})" ${gameOver ? "disabled" : ""}>CAP</button>
+            </div>
         </div>`;
     });
+
     renderRanking();
+    checkSum();
+
+    // Disabilita anche il pulsante conferma
+    const confirmBtn = document.getElementById("confirm-btn");
+    confirmBtn.disabled = true;
+    confirmBtn.classList.remove("ready");
+}
+
+function isGameOver(){
+    return players.filter(p=>p.active).length <= winners;
+}
+
+function addRound(){
+    if(dealerIndex===-1) chooseFirstDealer();
+
+    const snapshot={};
+    document.querySelectorAll(".score-in").forEach(inp=>{
+        const id=parseInt(inp.dataset.id);
+        const val=parseInt(inp.value||0);
+        const p=players.find(pl=>pl.id===id);
+        snapshot[id]={prevScore:p.score,prevActive:p.active};
+        p.score+=val;
+        p.playerHistory.push(val);
+    });
+
+    checkEliminations();
+    history.push({snapshot,dealerIndex});
+    document.querySelectorAll(".score-in").forEach(i=>i.value="");
+
+    updateDealerAfterRound();
+    saveGameToFirebase();
+    render();
+}
+
+function checkSum(){
+    let sum=0;
+    document.querySelectorAll(".score-in").forEach(i=>sum+=parseInt(i.value||0));
+    const display=document.getElementById("sum-display");
+    const btn=document.getElementById("confirm-btn");
+    display.innerText=`Somma: ${sum} / 21`;
+    if(sum==21 && !isGameOver()){ btn.disabled=false; btn.classList.add("ready"); display.className="sum-check sum-ok";}
+    else{ btn.disabled=true; btn.classList.remove("ready"); display.className="sum-check sum-err";}
+}
+
+function fillRete(targetId){
+    if(isGameOver()) return;
+    let total=0,target=null;
+    document.querySelectorAll(".score-in").forEach(inp=>{
+        const val=parseInt(inp.value);
+        if(parseInt(inp.dataset.id)===targetId) target=inp;
+        else total+=isNaN(val)?0:val;
+    });
+    if(target){ target.value=Math.min(Math.max(21-total,0),21); }
+    checkSum();
+}
+
+function makeCappotto(winnerId){
+    if(isGameOver()) return;
+
+    // Se alla prima mano non c'è ancora un mazziere, chiedi chi è
+    if(dealerIndex === -1){
+        chooseFirstDealer(); // questo imposta dealerIndex
+    }
+
+    if(!confirm("Confermi Cappotto?")) return;
+
+    const snapshot = {};
+    players.forEach(p => {
+        if(p.active){
+            snapshot[p.id] = {prevScore: p.score, prevActive: p.active};
+            const pts = (p.id === winnerId) ? 0 : 21;
+            p.score += pts;
+            p.playerHistory.push(pts);
+        }
+    });
+
+    checkEliminations();
+    history.push({snapshot, dealerIndex});
+    updateDealerAfterRound();
+    saveGameToFirebase();
+    render();
+}
+
+
+function checkEliminations(){
+    let newlyEliminated = [];
+
+    // Controlla punteggio limite e disattiva i giocatori eliminati
+    players.forEach(p => {
+        if(p.active && p.score >= limit){
+            p.active = false;
+            newlyEliminated.push(p.name);
+        }
+    });
+
+    // Mostra chi è stato eliminato nel turno corrente (console.log per debug)
+    if(newlyEliminated.length){
+        console.log("Giocatori eliminati questo turno:", newlyEliminated.join(", "));
+    }
+
+    // Disabilita sempre tutti gli input e pulsanti
+    document.querySelectorAll(".score-in").forEach(i => i.disabled = true);
+    document.querySelectorAll(".btn-rete, .btn-cap").forEach(b => b.disabled = true);
+
+    // Disabilita anche il pulsante conferma
+    const confirmBtn = document.getElementById("confirm-btn");
+    confirmBtn.disabled = true;
+    confirmBtn.classList.remove("ready");
+
+    // Mostra alert solo se la partita è terminata
+    if(isGameOver()){ 
+        alert("🏁 Partita terminata!");
+    }
+}
+
+
+function undoLast(){
+     return; // 🔒 blocca sempre la funzione
+
+    // codice sotto (non verrà eseguito)
+    if(!confirm("Sei sicuro di voler annullare l'ultima mano?")) return;
+
+    const last = history.pop();
+    for(let id in last.snapshot){
+        const p = players.find(pl => pl.id === parseInt(id));
+        p.score = last.snapshot[id].prevScore;
+        p.active = last.snapshot[id].prevActive;
+        p.playerHistory.pop();
+    }
+    dealerIndex = last.dealerIndex;
+    saveGameToFirebase();
+    render();
 }
 
 function renderRanking(){
-    const tbody = document.getElementById("ranking-body");
-    tbody.innerHTML = "";
-    
-    let sorted = [...players].sort((a,b) => a.score - b.score);
-    
-    sorted.forEach((p, index) => {
-        let historyHtml = "";
-        if(p.playerHistory){
-            p.playerHistory.forEach((val, i) => {
-                historyHtml += `
-                <div class="badge-container">
-                    <span class="hand-num">${i+1}</span>
-                    <span class="badge" style="background:#eee">${val}</span>
-                </div>`;
-            });
+    const rank=document.getElementById("ranking-body");
+    rank.innerHTML="";
+    const sorted=[...players].sort((a,b)=>a.score-b.score);
+    sorted.forEach((p,i)=>{
+        let cls="";
+        if(i<winners && p.active) cls="temp-winner";
+        if(!p.active) cls="eliminated";
+        const reversed=[...p.playerHistory].reverse();
+        const badges=reversed.map((pt,idx)=>{
+            const handNumber=p.playerHistory.length-idx;
+            return `<div class="badge-container"><span class="hand-num">${handNumber}</span><span class="badge">${pt}</span></div>`;
+        }).join("");
+        rank.innerHTML+=`<tr class="${cls}"><td>${i+1}</td><td>${p.name}</td><td><b>${p.score}</b></td><td><div class="history-scroll-cell">${badges||"-"}</div></td></tr>`;
+    });
+}
+
+function shareResults() {
+    try {
+        let text = `🏆 TRESSETTE A PERDERE - ${tableName}\n\n`;
+
+        // Ordina i giocatori dal punteggio più basso al più alto
+        const sorted = [...players].sort((a, b) => a.score - b.score);
+
+        // Trova lunghezza massima dei nomi e dei punteggi per allineamento
+        const maxNameLength = Math.max(...sorted.map(p => p.name.length));
+        const maxScoreLength = Math.max(...sorted.map(p => p.score.toString().length));
+
+        sorted.forEach((p, i) => {
+            const position = `${i + 1}.`;
+
+            // Puntini dinamici per allineare punteggio
+            const dotsCount = maxNameLength - p.name.length + 3; // +3 per spazio extra
+            const dots = ".".repeat(dotsCount);
+
+            // Riga principale: posizione, nome, puntini e punteggio allineato
+            const scoreStr = p.score.toString().padStart(maxScoreLength, " ");
+            text += `${position} ${p.name} ${dots} ${scoreStr}\n`;
+
+            // Storico mani con etichette numeriche
+            if (p.playerHistory?.length) {
+                const labeledHistory = p.playerHistory
+                    .map((score, index) => `${index + 1}ª: ${score}`)
+                    .join(", ");
+                text += `   Storico mani: ${labeledHistory}\n`;
+            } else {
+                text += `   Storico mani: -\n`;
+            }
+
+            text += `─────────────────────────────\n`;
+        });
+
+        // Condivisione tramite navigator o copia negli appunti
+        if (navigator.share) {
+            navigator.share({ title: "Risultati Tressette", text });
+        } else {
+            navigator.clipboard.writeText(text);
+            alert("Risultati copiati negli appunti!");
         }
 
-        tbody.innerHTML += `
-        <tr class="${!p.active ? 'eliminated' : ''}">
-            <td>${index + 1}</td>
-            <td>${p.name}</td>
-            <td><strong>${p.score}</strong></td>
-            <td><div class="history-scroll-cell">${historyHtml}</div></td>
-        </tr>`;
-    });
-}
-
-function shareResults(){
-    let text = `Classifica ${tableName}:\n`;
-    players.sort((a,b)=>a.score-b.score).forEach((p,i)=>{
-        text += `${i+1}. ${p.name}: ${p.score}pt ${!p.active?'(EL)':''}\n`;
-    });
-    if(navigator.share){
-        navigator.share({title: 'Risultati Tressette', text: text});
-    } else {
-        alert(text);
+    } catch (err) {
+        console.error("Errore condivisione risultati:", err);
+        alert("Si è verificato un errore nella condivisione dei risultati.");
     }
 }
+
+
+function saveGameToFirebase(){
+    const tableId=localStorage.getItem("tableID");
+    if(!tableId) return;
+    const gameData={
+        name:tableName,
+        players:players.map(p=>({id:p.id,name:p.name,score:p.score,active:p.active,playerHistory:[...p.playerHistory]})),
+        history:history.map(h=>({snapshot:h.snapshot,dealerIndex:h.dealerIndex})),
+        limit,winners,dealerIndex
+    };
+    db.ref("tables/"+tableId).update(gameData)
+      .then(()=>console.log("Dati salvati su Firebase"))
+      .catch(err=>console.error("Errore salvataggio Firebase:",err));
+}
+
+function chooseFirstDealer(){
+    let activePlayers = players.filter(p=>p.active);
+    let names = activePlayers.map((p,i)=>`${i+1} - ${p.name}`).join("\n");
+    let choice = prompt("Chi è stato il mazziere della prima mano?\n\n"+names);
+    let index=parseInt(choice)-1;
+    dealerIndex=(index>=0 && index<activePlayers.length)?players.findIndex(p=>p.id===activePlayers[index].id):players.findIndex(p=>p.active);
+}
+
+function updateDealerAfterRound(){
+    if(dealerIndex===-1) return;
+    let next=dealerIndex;
+    do{ next=(next+1)%players.length } while(!players[next].active);
+    dealerIndex=next;
+}
 </script>
+
 </body>
 </html>
