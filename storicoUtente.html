@@ -23,9 +23,15 @@ body {
 }
 h2 { text-align:center; color:#1a73e8; margin-bottom:15px;}
 
+/* Contenitore scrollabile per tavoli e tabelle storico */
+.tables-scroll, .hands-history {
+    overflow-x: auto;
+    width: 100%;
+}
+
 .tables-grid {
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns: repeat(3, 300px); /* larghezza fissa dei tavoli */
     gap:15px;
     margin-bottom:20px;
 }
@@ -66,8 +72,8 @@ h2 { text-align:center; color:#1a73e8; margin-bottom:15px;}
 .eliminated { text-decoration:line-through; color:#aaa; }
 
 .hands-history table {
-    width:100%;
-    border-collapse:collapse;
+    width: max-content; /* permette scroll orizzontale se serve */
+    border-collapse: collapse;
     margin-top:5px;
     font-size:12px;
 }
@@ -107,6 +113,15 @@ h2 { text-align:center; color:#1a73e8; margin-bottom:15px;}
 }
 
 .detail-row { margin-bottom:10px; }
+
+input#searchData {
+    width:100%;
+    padding:8px;
+    margin-bottom:10px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    box-sizing:border-box;
+}
 </style>
 
 <!-- Librerie -->
@@ -172,7 +187,7 @@ function visualizzaArchivio(data){
             return;
         }
 
-        let html='<div class="tables-grid">';
+        let html='<div class="tables-scroll"><div class="tables-grid">';
         Object.values(tables).forEach(t=>{
             let arr = Object.values(t.players || []);
             html+=`<div class="table"><b>${t.name}</b>`;
@@ -205,7 +220,7 @@ function visualizzaArchivio(data){
 
             html+="</div>";
         });
-        html+="</div>";
+        html+="</div></div>"; // chiude tables-grid e tables-scroll
         detailDiv.innerHTML = html;
     });
 }
@@ -255,7 +270,7 @@ function esportaArchivioPDF(data){
         const tables = snap.val()?.tables || {};
         if(Object.keys(tables).length===0){ alert("Nessun dato disponibile"); return; }
 
-        let html = '<div class="tables-grid">';
+        let html = '<div class="tables-scroll"><div class="tables-grid">';
         Object.values(tables).forEach(t=>{
             let arr = Object.values(t.players || []);
             html+=`<div class="table"><b>${t.name}</b>`;
@@ -285,7 +300,7 @@ function esportaArchivioPDF(data){
             }
             html+="</div>";
         });
-        html+="</div>";
+        html+="</div></div>"; // chiude tables-grid e tables-scroll
 
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
@@ -325,7 +340,6 @@ function goToTables(){
 }
 
 document.addEventListener("DOMContentLoaded", ()=>mostraStorico());
-
 </script>
 </head>
 
@@ -341,5 +355,6 @@ document.addEventListener("DOMContentLoaded", ()=>mostraStorico());
 
 <input type="text" id="searchData" placeholder="🔍 Filtra data..." oninput="mostraStorico()">
 <div id="storico-list"></div>
-</div></body>
+</div>
+</body>
 </html>
