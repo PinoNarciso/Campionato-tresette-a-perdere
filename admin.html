@@ -86,7 +86,18 @@ button {
 <div class="container" id="loginContainer">
   <div class="card">
     <h3>Login Admin</h3>
-    <input type="password" id="adminPassword" placeholder="Inserisci password" onkeydown="if(event.key==='Enter'){login();}">
+    <div style="position: relative;">
+  <input type="password" id="adminPassword" placeholder="Inserisci password" onkeydown="if(event.key==='Enter'){login();}">
+  <span id="toggleEye" style="
+      position:absolute;
+      right:10px;
+      top:50%;
+      transform:translateY(-50%);
+      cursor:pointer;
+      user-select:none;
+      font-size:18px;
+  ">👁️</span>
+</div>
     <button onclick="login()">Accedi</button>
     <div id="loginError"></div>
   </div>
@@ -398,6 +409,20 @@ function deleteTable(id){
   if(confirm("Eliminare?"))
     db.ref("tables/"+id).remove();
 }
+
+const toggleEye = document.getElementById("toggleEye");
+const adminPasswordInput = document.getElementById("adminPassword");
+
+toggleEye.addEventListener("click", ()=>{
+  if(adminPasswordInput.type === "password"){
+    adminPasswordInput.type = "text";
+    toggleEye.textContent = "🙈"; // occhio chiuso
+  } else {
+    adminPasswordInput.type = "password";
+    toggleEye.textContent = "👁️"; // occhio aperto
+  }
+});
+
 </script>
 
 </body>
