@@ -130,21 +130,37 @@ button {
   <div class="card">
     <h2 id="formTitle">Crea Tavolo</h2>
 
-    <input id="name" placeholder="Nome tavolo" value="Tavolo 1 (Primo Turno)">
+   <label>Nome Tavolo</label>
+<input id="name" value="Tavolo 1 (Primo Turno)">
 
-    <div style="display:flex; gap:5px;">
-      <input id="limit" type="number" value="81" placeholder="Limite punti">
-      <input id="winners" type="number" value="3" placeholder="Vincitori">
-    </div>
+<div style="display:flex; gap:5px;">
+  <div style="flex:1;">
+    <label>Limite punti</label>
+    <input id="limit" type="number" value="81">
+  </div>
 
-    <input id="password" type="text" placeholder="Password tavolo">
+  <div style="flex:1;">
+    <label>Numero Vincitori</label>
+    <input id="winners" type="number" value="3">
+  </div>
+</div>
 
-    <input id="searchPlayer" placeholder="🔍 Cerca..." oninput="filterPlayers()">
+<label>Password tavolo</label>
+<input id="password" type="text" value="admin">
 
-    <div style="display:flex; gap:5px;">
-      <input id="newPlayer" placeholder="Nome giocatore">
-      <button onclick="addPlayer()">Inserisci/Modifica Giocatore</button>
-    </div>
+<label>Cerca giocatore</label>
+<input id="searchPlayer" placeholder="🔍 Cerca..." oninput="filterPlayers()">
+
+<div style="display:flex; gap:5px;">
+  <div style="flex:1;">
+    <label>Nome Giocatore da Inserire/Modificare</label>
+    <input id="newPlayer">
+  </div>
+
+  <div style="flex:1; display:flex; align-items:flex-end;">
+    <button onclick="addPlayer()">Inserisci / Modifica</button>
+  </div>
+</div>
 
     <div id="playersContainer"></div>
 
